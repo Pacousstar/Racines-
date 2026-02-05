@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+export async function GET(request: NextRequest) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  const page = Math.max(1, Number(request.nextUrl.searchParams.get('page')) || 1)
+  const limit = Math.min(100, Math.max(1, Number(request.nextUrl.searchParams.get('limit')) || 20))
+  const skip = (page - 1) * limit
+  
+  const q = String(request.nextUrl.searchParams.get('q') || '').trim().toLowerCase()
+  const list = await prisma.fournisseur.findMany({
+    where: { actif: true },
+    orderBy: { nom: 'asc' },
+    select: { id: true, nom: true, telephone: true, email: true, ncc: true },
+  })
+  const filtered = q
+    ? list.filter(
+        (f) =>
+          f.nom.toLowerCase().includes(q) ||
+          (f.telephone || '').toLowerCase().includes(q) ||
+          (f.email || '').toLowerCase().includes(q)
+      )
+    : list
+
+  const total = filtered.length
+  const paginated = filtered.slice(skip, skip + limit)
+
+  return NextResponse.json({
+    data: paginated,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  })
+}
+
+export async function POST(request: NextRequest) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  try {
+    const body = await request.json()
+    const nom = String(body?.nom || '').trim()
+    const telephone = body?.telephone != null ? String(body.telephone).trim() || null : null
+    const email = body?.email != null ? String(body.email).trim() || null : null
+    const ncc = body?.ncc != null ? String(body.ncc).trim() || null : null
+
+    if (!nom) {
+      return NextResponse.json({ error: 'Nom du fournisseur requis.' }, { status: 400 })
+    }
+
+    const f = await prisma.fournisseur.create({
+      data: { nom, telephone, email, ncc, actif: true },
+    })
+    return NextResponse.json(f)
+  } catch (e) {
+    console.error('POST /api/fournisseurs:', e)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}

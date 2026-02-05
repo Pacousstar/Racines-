@@ -1,0 +1,164 @@
+import { NextResponse } from 'next/server'
+import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+const DASHBOARD_TIMEOUT_MS = 8000
+
+function timeoutPromise<T>(ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => setTimeout(() => resolve(fallback), ms))
+}
+
+export async function GET() {
+  try {
+    const session = await getSession()
+    if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+    const now = new Date()
+    const debAuj = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const finAuj = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+
+    const catchZero = (label: string) => (err: unknown) => {
+      console.error('[dashboard]', label, err instanceof Error ? err.message : err)
+      return 0
+    }
+    const catchEmpty = (label: string) => (err: unknown) => {
+      console.error('[dashboard]', label, err instanceof Error ? err.message : err)
+      return [] as never[]
+    }
+
+    const queries = Promise.all([
+      prisma.vente.count({ where: { date: { gte: debAuj, lte: finAuj }, statut: 'VALIDEE' } }).catch(catchZero('vente.count')),
+      prisma.mouvement.count({ where: { date: { gte: debAuj, lte: finAuj } } }).catch(catchZero('mouvement.count')),
+      prisma.$queryRaw<[{ n: number }]>`SELECT COUNT(*) as n FROM Client WHERE actif = 1`.then((r) => Number(r[0]?.n ?? 0)).catch(catchZero('Client')),
+      prisma.stock.count({ where: { quantite: { gt: 0 } } }).catch(catchZero('stock.count')),
+      prisma.produit.count().catch(catchZero('produit.count')),
+      // Optimisation : filtrer les stocks faibles directement en base avec une requête SQL
+      // au lieu de charger tous les stocks puis filtrer en mémoire
+      prisma.$queryRaw<Array<{
+        id: number
+        quantite: number
+        produit_designation: string
+        produit_seuilMin: number
+        produit_categorie: string
+        magasin_code: string
+      }>>`
+        SELECT 
+          s.id,
+          s.quantite,
+          p.designation as produit_designation,
+          p."seuilMin" as produit_seuilMin,
+          p.categorie as produit_categorie,
+          m.code as magasin_code
+        FROM "Stock" s
+        INNER JOIN "Produit" p ON s."produitId" = p.id
+        INNER JOIN "Magasin" m ON s."magasinId" = m.id
+        WHERE p.actif = 1 AND s.quantite < p."seuilMin"
+        ORDER BY s.quantite ASC
+        LIMIT 5
+      `.then((rows) => rows.map((r) => ({
+        id: r.id,
+        quantite: r.quantite,
+        produit: {
+          designation: r.produit_designation,
+          seuilMin: r.produit_seuilMin,
+          categorie: r.produit_categorie,
+        },
+        magasin: {
+          code: r.magasin_code,
+        },
+      }))).catch(catchEmpty('stock.findMany')),
+      prisma.vente.findMany({
+        take: 5,
+        orderBy: { date: 'desc' },
+        select: {
+          id: true,
+          numero: true,
+          date: true,
+          clientLibre: true,
+          client: { select: { nom: true } },
+        },
+      }).catch(catchEmpty('vente.findMany')),
+      prisma.produit.groupBy({
+        by: ['categorie'],
+        where: { actif: true },
+        _count: { id: true },
+      }).catch(catchEmpty('produit.groupBy')),
+    ])
+
+    const timeoutFallback = [
+      0, 0, 0, 0, 0,
+      [] as Awaited<ReturnType<typeof prisma.stock.findMany>>,
+      [] as Array<{
+        id: number
+        numero: string
+        date: Date
+        clientLibre: string | null
+        client: { nom: string } | null
+      }>,
+      [] as { _count: { id: number }; categorie: string }[],
+    ] as const
+
+    const result = await Promise.race([
+      queries,
+      timeoutPromise(DASHBOARD_TIMEOUT_MS, timeoutFallback),
+    ])
+
+    const [
+      transactionsJour,
+      mouvementsJour,
+      clientsActifs,
+      stocksAvecQte,
+      totalProduitsCatalogue,
+      lowStock,
+      recentSales,
+      categories,
+    ] = result
+
+    const timedOut = result === timeoutFallback
+    if (timedOut) {
+      console.warn('[dashboard] Timeout après', DASHBOARD_TIMEOUT_MS, 'ms. Base verrouillée ou trop lente. Fermez le portable (Lancer.bat) si ouvert.')
+    }
+
+    const totalRef = categories.reduce((s, c) => s + c._count.id, 0)
+    const repartition = totalRef > 0
+      ? categories.map((c) => ({ name: c.categorie || 'DIVERS', percent: Math.round((c._count.id / totalRef) * 100) })).sort((a, b) => b.percent - a.percent).slice(0, 6)
+      : []
+
+    return NextResponse.json({
+      transactionsJour,
+      produitsEnStock: stocksAvecQte,
+      totalProduitsCatalogue,
+      mouvementsJour,
+      clientsActifs,
+      lowStock: Array.isArray(lowStock) ? lowStock.map((s: any) => ({
+        name: s.produit?.designation || '',
+        stock: s.quantite || 0,
+        min: s.produit?.seuilMin || 0,
+        category: s.produit?.categorie || '',
+      })) : [],
+      recentSales: Array.isArray(recentSales) ? recentSales.map((v: any) => ({
+        id: v.numero,
+        client: v.client?.nom || v.clientLibre || '—',
+        time: v.date,
+      })) : [],
+      repartition,
+      _timeout: timedOut,
+    })
+  } catch (e) {
+    console.error('Dashboard API error:', e)
+    const msg = e instanceof Error ? e.message : String(e)
+    // Retourner des valeurs par défaut plutôt qu'une erreur pour que le Dashboard s'affiche
+    return NextResponse.json({
+      transactionsJour: 0,
+      produitsEnStock: 0,
+      totalProduitsCatalogue: 0,
+      mouvementsJour: 0,
+      clientsActifs: 0,
+      lowStock: [],
+      recentSales: [],
+      repartition: [],
+      _error: msg,
+      _timeout: false,
+    })
+  }
+}

@@ -1,0 +1,70 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  const id = Number((await params).id)
+  if (!Number.isInteger(id) || id < 1) {
+    return NextResponse.json({ error: 'ID invalide.' }, { status: 400 })
+  }
+
+  const f = await prisma.fournisseur.findUnique({ where: { id } })
+  if (!f) return NextResponse.json({ error: 'Fournisseur introuvable.' }, { status: 404 })
+  return NextResponse.json(f)
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  const id = Number((await params).id)
+  if (!Number.isInteger(id) || id < 1) {
+    return NextResponse.json({ error: 'ID invalide.' }, { status: 400 })
+  }
+
+  try {
+    const body = await request.json()
+    const data: Record<string, unknown> = {}
+    if (body?.nom != null) data.nom = String(body.nom).trim()
+    if (body?.telephone !== undefined) data.telephone = String(body.telephone).trim() || null
+    if (body?.email !== undefined) data.email = String(body.email).trim() || null
+    if (body?.ncc !== undefined) data.ncc = String(body.ncc).trim() || null
+    if (body?.actif !== undefined) data.actif = Boolean(body.actif)
+
+    const f = await prisma.fournisseur.update({ where: { id }, data: data as object })
+    return NextResponse.json(f)
+  } catch (e) {
+    console.error('PATCH /api/fournisseurs/[id]:', e)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  const id = Number((await params).id)
+  if (!Number.isInteger(id) || id < 1) {
+    return NextResponse.json({ error: 'ID invalide.' }, { status: 400 })
+  }
+
+  try {
+    await prisma.fournisseur.update({ where: { id }, data: { actif: false } })
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('DELETE /api/fournisseurs/[id]:', e)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "code": "ART001",
+    "designation": "Article sans magasins",
+    "categorie": "DIVERS",
+    "prix_achat": 1000,
+    "prix_vente": 1500,
+    "seuil_min": 5
+  },
+  {
+    "code": "ART002",
+    "designation": "Article avec magasins (stocks créés à 0)",
+    "categorie": "PIECES",
+    "prix_achat": 500,
+    "prix_vente": 750,
+    "magasins": ["MAG01", "MAG02"]
+  },
+  {
+    "code": "ART003",
+    "designation": "Article avec 1 magasin et stock_initial",
+    "categorie": "FILTRES",
+    "prix_achat": 2000,
+    "magasins": ["MAG01"],
+    "stock_initial": 20
+  }
+]

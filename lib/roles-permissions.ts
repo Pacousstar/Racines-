@@ -1,0 +1,230 @@
+/**
+ * Système de rôles et permissions pour GestiCom
+ * 
+ * Rôles définis :
+ * - SUPER_ADMIN : Accès total, gestion des utilisateurs et paramètres
+ * - ADMIN : Gestion opérationnelle, peut créer/modifier la plupart des données
+ * - COMPTABLE : Accès comptable, consultation et validation des transactions
+ * - GESTIONNAIRE : Gestion des stocks, ventes, achats
+ * - MAGASINIER : Gestion des stocks uniquement
+ * - ASSISTANTE : Saisie et consultation limitée
+ */
+
+export type Role = 
+  | 'SUPER_ADMIN' 
+  | 'ADMIN' 
+  | 'COMPTABLE' 
+  | 'GESTIONNAIRE' 
+  | 'MAGASINIER' 
+  | 'ASSISTANTE'
+
+export type Permission = 
+  // Dashboard
+  | 'dashboard:view'
+  
+  // Produits
+  | 'produits:view'
+  | 'produits:create'
+  | 'produits:edit'
+  | 'produits:delete'
+  
+  // Stocks
+  | 'stocks:view'
+  | 'stocks:entree'
+  | 'stocks:sortie'
+  | 'stocks:init'
+  
+  // Ventes
+  | 'ventes:view'
+  | 'ventes:create'
+  | 'ventes:edit'
+  | 'ventes:delete'
+  | 'ventes:annuler'
+  
+  // Achats
+  | 'achats:view'
+  | 'achats:create'
+  | 'achats:edit'
+  | 'achats:delete'
+  
+  // Dépenses
+  | 'depenses:view'
+  | 'depenses:create'
+  | 'depenses:edit'
+  | 'depenses:delete'
+  
+  // Charges
+  | 'charges:view'
+  | 'charges:create'
+  | 'charges:edit'
+  | 'charges:delete'
+  
+  // Comptabilité
+  | 'comptabilite:view'
+  | 'comptabilite:rapports'
+  | 'comptabilite:export'
+  
+  // Utilisateurs
+  | 'users:view'
+  | 'users:create'
+  | 'users:edit'
+  | 'users:delete'
+  
+  // Paramètres
+  | 'parametres:view'
+  | 'parametres:edit'
+  
+  // Sauvegardes
+  | 'sauvegardes:view'
+  | 'sauvegardes:create'
+  | 'sauvegardes:restore'
+  | 'sauvegardes:delete'
+
+/**
+ * Définition des permissions par rôle
+ */
+export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+  SUPER_ADMIN: [
+    // Accès total
+    'dashboard:view',
+    'produits:view', 'produits:create', 'produits:edit', 'produits:delete',
+    'stocks:view', 'stocks:entree', 'stocks:sortie', 'stocks:init',
+    'ventes:view', 'ventes:create', 'ventes:edit', 'ventes:delete', 'ventes:annuler',
+    'achats:view', 'achats:create', 'achats:edit', 'achats:delete',
+    'depenses:view', 'depenses:create', 'depenses:edit', 'depenses:delete',
+    'charges:view', 'charges:create', 'charges:edit', 'charges:delete',
+    'comptabilite:view', 'comptabilite:rapports', 'comptabilite:export',
+    'users:view', 'users:create', 'users:edit', 'users:delete',
+    'parametres:view', 'parametres:edit',
+    'sauvegardes:view', 'sauvegardes:create', 'sauvegardes:restore', 'sauvegardes:delete',
+  ],
+  
+  ADMIN: [
+    // Gestion opérationnelle complète
+    'dashboard:view',
+    'produits:view', 'produits:create', 'produits:edit',
+    'stocks:view', 'stocks:entree', 'stocks:sortie', 'stocks:init',
+    'ventes:view', 'ventes:create', 'ventes:edit', 'ventes:annuler',
+    'achats:view', 'achats:create', 'achats:edit',
+    'depenses:view', 'depenses:create', 'depenses:edit',
+    'charges:view', 'charges:create', 'charges:edit',
+    'comptabilite:view', 'comptabilite:rapports',
+    'users:view', 'users:create', 'users:edit',
+    'parametres:view', 'parametres:edit',
+    'sauvegardes:view', 'sauvegardes:create',
+  ],
+  
+  COMPTABLE: [
+    // Accès comptable et consultation
+    'dashboard:view',
+    'produits:view',
+    'stocks:view',
+    'ventes:view',
+    'achats:view',
+    'depenses:view', 'depenses:create', 'depenses:edit',
+    'charges:view', 'charges:create', 'charges:edit',
+    'comptabilite:view', 'comptabilite:rapports', 'comptabilite:export',
+  ],
+  
+  GESTIONNAIRE: [
+    // Gestion des opérations commerciales
+    'dashboard:view',
+    'produits:view', 'produits:create', 'produits:edit',
+    'stocks:view', 'stocks:entree', 'stocks:sortie',
+    'ventes:view', 'ventes:create', 'ventes:edit',
+    'achats:view', 'achats:create', 'achats:edit',
+    'depenses:view', 'depenses:create',
+    'charges:view', 'charges:create',
+  ],
+  
+  MAGASINIER: [
+    // Gestion des stocks uniquement
+    'dashboard:view',
+    'produits:view',
+    'stocks:view', 'stocks:entree', 'stocks:sortie',
+    'ventes:view',
+    'achats:view',
+  ],
+  
+  ASSISTANTE: [
+    // Saisie et consultation limitée
+    'dashboard:view',
+    'produits:view',
+    'stocks:view',
+    'ventes:view', 'ventes:create',
+    'achats:view', 'achats:create',
+    'depenses:view', 'depenses:create',
+  ],
+}
+
+/**
+ * Vérifie si un rôle a une permission donnée
+ */
+export function hasPermission(role: Role, permission: Permission): boolean {
+  const permissions = ROLE_PERMISSIONS[role] || []
+  return permissions.includes(permission)
+}
+
+/**
+ * Vérifie si un rôle a au moins une des permissions données
+ */
+export function hasAnyPermission(role: Role, permissions: Permission[]): boolean {
+  return permissions.some(perm => hasPermission(role, perm))
+}
+
+/**
+ * Vérifie si un rôle a toutes les permissions données
+ */
+export function hasAllPermissions(role: Role, permissions: Permission[]): boolean {
+  return permissions.every(perm => hasPermission(role, perm))
+}
+
+/**
+ * Rôles pouvant accéder aux paramètres
+ */
+export const ROLES_ADMIN = ['SUPER_ADMIN', 'ADMIN'] as const
+
+/**
+ * Rôles pouvant accéder à la comptabilité
+ */
+export const ROLES_COMPTA = ['SUPER_ADMIN', 'COMPTABLE'] as const
+
+/**
+ * Rôles pouvant gérer les utilisateurs
+ */
+export const ROLES_USER_MANAGEMENT = ['SUPER_ADMIN', 'ADMIN'] as const
+
+/**
+ * Rôles pouvant gérer les sauvegardes
+ */
+export const ROLES_BACKUP = ['SUPER_ADMIN', 'ADMIN'] as const
+
+/**
+ * Description des rôles pour l'interface
+ */
+export const ROLE_DESCRIPTIONS: Record<Role, { label: string; description: string }> = {
+  SUPER_ADMIN: {
+    label: 'Super Administrateur',
+    description: 'Accès total au système. Gestion des utilisateurs, paramètres et sauvegardes.',
+  },
+  ADMIN: {
+    label: 'Administrateur',
+    description: 'Gestion opérationnelle complète. Peut créer/modifier les données et gérer les utilisateurs.',
+  },
+  COMPTABLE: {
+    label: 'Comptable',
+    description: 'Accès comptable. Consultation et validation des transactions, rapports financiers.',
+  },
+  GESTIONNAIRE: {
+    label: 'Gestionnaire',
+    description: 'Gestion des opérations commerciales. Stocks, ventes, achats et dépenses.',
+  },
+  MAGASINIER: {
+    label: 'Magasinier',
+    description: 'Gestion des stocks uniquement. Entrées et sorties de stock.',
+  },
+  ASSISTANTE: {
+    label: 'Assistante',
+    description: 'Saisie et consultation limitée. Création de ventes, achats et dépenses.',
+  },
+}

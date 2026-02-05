@@ -1,0 +1,452 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Wallet, Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Filter, X, Search, FileSpreadsheet, Download } from 'lucide-react'
+import { useToast } from '@/hooks/useToast'
+import { formatApiError } from '@/lib/validation-helpers'
+import { addToSyncQueue, isOnline } from '@/lib/offline-sync'
+
+type Magasin = { id: number; code: string; nom: string }
+type OperationCaisse = {
+  id: number
+  date: string
+  type: string
+  motif: string
+  montant: number
+  magasin: { id: number; code: string; nom: string }
+  utilisateur: { nom: string; login: string }
+}
+
+export default function CaissePage() {
+  const [magasins, setMagasins] = useState<Magasin[]>([])
+  const [operations, setOperations] = useState<OperationCaisse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [formOpen, setFormOpen] = useState(false)
+  const [formType, setFormType] = useState<'ENTREE' | 'SORTIE'>('ENTREE')
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    magasinId: '',
+    motif: '',
+    montant: '',
+  })
+  const [err, setErr] = useState('')
+  const [saving, setSaving] = useState(false)
+  const { success: showSuccess, error: showError } = useToast()
+  const [dateDebut, setDateDebut] = useState('')
+  const [dateFin, setDateFin] = useState('')
+  const [filtreMagasin, setFiltreMagasin] = useState('')
+  const [filtreType, setFiltreType] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const fetchOperations = () => {
+    setLoading(true)
+    const params = new URLSearchParams({ limit: '200' })
+    if (dateDebut) params.set('dateDebut', dateDebut)
+    if (dateFin) params.set('dateFin', dateFin)
+    if (filtreMagasin) params.set('magasinId', filtreMagasin)
+    if (filtreType) params.set('type', filtreType)
+    fetch('/api/caisse?' + params.toString())
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setOperations)
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetch('/api/magasins')
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setMagasins)
+  }, [])
+
+  useEffect(() => {
+    fetchOperations()
+  }, [dateDebut, dateFin, filtreMagasin, filtreType])
+
+  const openForm = (type: 'ENTREE' | 'SORTIE') => {
+    setFormType(type)
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      magasinId: filtreMagasin || '',
+      motif: '',
+      montant: '',
+    })
+    setErr('')
+    setFormOpen(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErr('')
+    const montant = Number(formData.montant) || 0
+    if (!formData.magasinId) {
+      setErr('Sélectionnez un magasin.')
+      return
+    }
+    if (!formData.motif.trim()) {
+      setErr('Motif requis.')
+      return
+    }
+    if (montant <= 0) {
+      setErr('Montant doit être supérieur à 0.')
+      return
+    }
+
+    const requestData = {
+      date: formData.date,
+      magasinId: Number(formData.magasinId),
+      type: formType,
+      motif: formData.motif.trim(),
+      montant,
+    }
+
+    // Vérifier si on est hors-ligne
+    if (!isOnline()) {
+      addToSyncQueue({
+        action: 'CREATE',
+        entity: 'CAISSE',
+        data: requestData,
+        endpoint: '/api/caisse',
+        method: 'POST',
+      })
+      setFormOpen(false)
+      showSuccess(formType === 'ENTREE' ? 'Entrée enregistrée localement. Elle sera synchronisée dès que la connexion sera rétablie.' : 'Sortie enregistrée localement. Elle sera synchronisée dès que la connexion sera rétablie.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const res = await fetch('/api/caisse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setFormOpen(false)
+        fetchOperations()
+        showSuccess(formType === 'ENTREE' ? 'Entrée enregistrée avec succès.' : 'Sortie enregistrée avec succès.')
+      } else {
+        const errorMsg = formatApiError(data.error || 'Erreur lors de l\'enregistrement.')
+        setErr(errorMsg)
+        showError(errorMsg)
+      }
+    } catch (e) {
+      const errorMsg = formatApiError(e)
+      setErr(errorMsg)
+      showError(errorMsg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const totalEntrees = operations.filter((o) => o.type === 'ENTREE').reduce((s, o) => s + o.montant, 0)
+  const totalSorties = operations.filter((o) => o.type === 'SORTIE').reduce((s, o) => s + o.montant, 0)
+  const soldeMouvements = totalEntrees - totalSorties
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Wallet className="h-8 w-8 text-white" />
+            Caisse
+          </h1>
+          <p className="mt-1 text-white/90">Mouvements d&apos;entrée et de sortie de caisse par magasin</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Filter className="h-4 w-4" />
+            Filtres
+          </button>
+          <button
+            type="button"
+            onClick={() => openForm('ENTREE')}
+            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+          >
+            <ArrowDownCircle className="h-4 w-4" />
+            Entrée caisse
+          </button>
+          <button
+            type="button"
+            onClick={() => openForm('SORTIE')}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            <ArrowUpCircle className="h-4 w-4" />
+            Sortie caisse
+          </button>
+        </div>
+      </div>
+
+      {showFilters && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date début</label>
+              <input
+                type="date"
+                value={dateDebut}
+                onChange={(e) => setDateDebut(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date fin</label>
+              <input
+                type="date"
+                value={dateFin}
+                onChange={(e) => setDateFin(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Magasin</label>
+              <select
+                value={filtreMagasin}
+                onChange={(e) => setFiltreMagasin(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">Tous</option>
+                {magasins.map((m) => (
+                  <option key={m.id} value={String(m.id)}>{m.code} – {m.nom}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Type</label>
+              <select
+                value={filtreType}
+                onChange={(e) => setFiltreType(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">Tous</option>
+                <option value="ENTREE">Entrée</option>
+                <option value="SORTIE">Sortie</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barre de recherche et exports */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher par motif, magasin, utilisateur..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-orange-500 focus:outline-none"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams()
+              if (dateDebut) params.set('dateDebut', dateDebut)
+              if (dateFin) params.set('dateFin', dateFin)
+              if (filtreMagasin) params.set('magasinId', filtreMagasin)
+              if (filtreType) params.set('type', filtreType)
+              window.open(`/api/caisse/export-excel?${params.toString()}`, '_blank')
+            }}
+            className="flex items-center gap-2 rounded-lg border-2 border-green-500 bg-green-50 px-3 py-2 text-sm font-medium text-green-800 hover:bg-green-100"
+            title="Exporter les opérations en Excel"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams()
+              if (dateDebut) params.set('dateDebut', dateDebut)
+              if (dateFin) params.set('dateFin', dateFin)
+              if (filtreMagasin) params.set('magasinId', filtreMagasin)
+              if (filtreType) params.set('type', filtreType)
+              window.open(`/api/caisse/export-pdf?${params.toString()}`, '_blank')
+            }}
+            className="flex items-center gap-2 rounded-lg border-2 border-red-500 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100"
+            title="Exporter les opérations en PDF"
+          >
+            <Download className="h-4 w-4" />
+            PDF
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 p-6 shadow-lg transition-all hover:shadow-xl hover:scale-105">
+          <p className="text-sm font-medium text-white/90">Total entrées</p>
+          <p className="mt-1 text-2xl font-bold text-white">{totalEntrees.toLocaleString('fr-FR')} FCFA</p>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-red-500 to-rose-600 p-6 shadow-lg transition-all hover:shadow-xl hover:scale-105">
+          <p className="text-sm font-medium text-white/90">Total sorties</p>
+          <p className="mt-1 text-2xl font-bold text-white">{totalSorties.toLocaleString('fr-FR')} FCFA</p>
+        </div>
+        <div className={`rounded-xl bg-gradient-to-br p-6 shadow-lg transition-all hover:shadow-xl hover:scale-105 ${
+          soldeMouvements >= 0 
+            ? 'from-blue-500 to-cyan-600' 
+            : 'from-orange-500 to-red-600'
+        }`}>
+          <p className="text-sm font-medium text-white/90">Solde (entrées − sorties)</p>
+          <p className="mt-1 text-2xl font-bold text-white">
+            {soldeMouvements.toLocaleString('fr-FR')} FCFA
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+          </div>
+        ) : operations.length === 0 ? (
+          <div className="py-12 text-center text-gray-500">Aucun mouvement sur la période.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Magasin</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Motif</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Montant</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Utilisateur</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {operations
+                  .filter((o) => {
+                    if (!searchTerm) return true
+                    const search = searchTerm.toLowerCase()
+                    return (
+                      o.motif.toLowerCase().includes(search) ||
+                      o.magasin.code.toLowerCase().includes(search) ||
+                      o.magasin.nom.toLowerCase().includes(search) ||
+                      o.utilisateur.nom.toLowerCase().includes(search)
+                    )
+                  })
+                  .map((o) => (
+                    <tr key={o.id} className="hover:bg-gray-50">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {new Date(o.date).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                          o.type === 'ENTREE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {o.type === 'ENTREE' ? 'Entrée' : 'Sortie'}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+                      {o.magasin.code} – {o.magasin.nom}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{o.motif}</td>
+                    <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${o.type === 'ENTREE' ? 'text-green-600' : 'text-red-600'}`}>
+                      {o.type === 'ENTREE' ? '+' : '−'} {o.montant.toLocaleString('fr-FR')} FCFA
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{o.utilisateur.nom}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {formOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {formType === 'ENTREE' ? 'Entrée caisse' : 'Sortie caisse'}
+              </h2>
+              <button type="button" onClick={() => setFormOpen(false)} className="rounded p-1 hover:bg-gray-100">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {err && <p className="text-sm text-red-600">{err}</p>}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData((f) => ({ ...f, date: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Magasin</label>
+                <select
+                  required
+                  value={formData.magasinId}
+                  onChange={(e) => setFormData((f) => ({ ...f, magasinId: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Sélectionner</option>
+                  {magasins.map((m) => (
+                    <option key={m.id} value={String(m.id)}>{m.code} – {m.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Motif</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.motif}
+                  onChange={(e) => setFormData((f) => ({ ...f, motif: e.target.value }))}
+                  placeholder="Ex. Apport fonds, Vente, Remboursement…"
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Montant (FCFA)</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="1"
+                  value={formData.montant}
+                  onChange={(e) => setFormData((f) => ({ ...f, montant: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white ${
+                    formType === 'ENTREE' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                  } disabled:opacity-50`}
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
