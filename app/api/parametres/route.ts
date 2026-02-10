@@ -1,13 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { requireRole, ROLES_ADMIN } from '@/lib/require-role'
+import { ROLES_ADMIN } from '@/lib/require-role'
 import { parametresPatchSchema } from '@/lib/validations'
 import { prisma } from '@/lib/db'
 
+async function canAccessParametres(session: { userId: number; role: string } | null) {
+  if (!session) return false
+  if (ROLES_ADMIN.includes(session.role as 'SUPER_ADMIN' | 'ADMIN')) return true
+  const user = await prisma.utilisateur.findUnique({
+    where: { id: session.userId },
+    select: { permissionsPersonnalisees: true },
+  })
+  if (!user?.permissionsPersonnalisees) return false
+  try {
+    const perms = JSON.parse(user.permissionsPersonnalisees) as string[]
+    return Array.isArray(perms) && perms.includes('parametres:view')
+  } catch {
+    return false
+  }
+}
+
 export async function GET() {
   const session = await getSession()
-  const forbidden = requireRole(session, ROLES_ADMIN)
-  if (forbidden) return forbidden
+  if (!session) return NextResponse.json({ error: 'Non autorisé.' }, { status: 401 })
+  if (!(await canAccessParametres(session))) {
+    return NextResponse.json({ error: 'Droits insuffisants pour accéder aux paramètres.' }, { status: 403 })
+  }
 
   const p = await prisma.parametre.findFirst({ orderBy: { id: 'asc' } })
   if (!p) return NextResponse.json({ error: 'Paramètres introuvables.' }, { status: 404 })
@@ -16,8 +34,21 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   const session = await getSession()
-  const forbidden = requireRole(session, ROLES_ADMIN)
-  if (forbidden) return forbidden
+  if (!session) return NextResponse.json({ error: 'Non autorisé.' }, { status: 401 })
+  const canEdit = ROLES_ADMIN.includes(session.role as 'SUPER_ADMIN' | 'ADMIN') || await (async () => {
+    const user = await prisma.utilisateur.findUnique({
+      where: { id: session.userId },
+      select: { permissionsPersonnalisees: true },
+    })
+    if (!user?.permissionsPersonnalisees) return false
+    try {
+      const perms = JSON.parse(user.permissionsPersonnalisees) as string[]
+      return Array.isArray(perms) && perms.includes('parametres:edit')
+    } catch { return false }
+  })()
+  if (!canEdit) {
+    return NextResponse.json({ error: 'Droits insuffisants pour modifier les paramètres.' }, { status: 403 })
+  }
 
   try {
     const body = await request.json().catch(() => ({}))

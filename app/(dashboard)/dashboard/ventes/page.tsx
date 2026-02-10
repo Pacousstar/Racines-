@@ -1029,11 +1029,11 @@ export default function VentesPage() {
             </div>
             <div className="space-y-4 p-6">
               <div className="grid gap-3 text-sm sm:grid-cols-2">
-                <div><span className="text-gray-500">Date :</span> {new Date(detailVente.date).toLocaleString('fr-FR')}</div>
-                <div><span className="text-gray-500">Magasin :</span> {detailVente.magasin.code} – {detailVente.magasin.nom}</div>
-                <div><span className="text-gray-500">Client :</span> {detailVente.client?.nom || detailVente.clientLibre || '—'}</div>
-                <div><span className="text-gray-500">Paiement :</span> {detailVente.modePaiement}</div>
-                <div><span className="text-gray-500">Statut paiement :</span>
+                <div><span className="font-medium text-gray-700">Date :</span> <span className="text-gray-900">{new Date(detailVente.date).toLocaleString('fr-FR')}</span></div>
+                <div><span className="font-medium text-gray-700">Magasin :</span> <span className="text-gray-900">{detailVente.magasin.code} – {detailVente.magasin.nom}</span></div>
+                <div><span className="font-medium text-gray-700">Client :</span> <span className="text-gray-900">{detailVente.client?.nom || detailVente.clientLibre || '—'}</span></div>
+                <div><span className="font-medium text-gray-700">Paiement :</span> <span className="text-gray-900">{detailVente.modePaiement}</span></div>
+                <div><span className="font-medium text-gray-700">Statut paiement :</span>
                   <span className={`ml-1 rounded px-2 py-0.5 text-xs font-medium ${
                     detailVente.statutPaiement === 'PAYE' ? 'bg-green-100 text-green-800' :
                     detailVente.statutPaiement === 'PARTIEL' ? 'bg-amber-100 text-amber-800' :
@@ -1042,21 +1042,21 @@ export default function VentesPage() {
                     {detailVente.statutPaiement === 'PAYE' ? 'Payé' : detailVente.statutPaiement === 'PARTIEL' ? 'Partiel' : detailVente.statutPaiement === 'CREDIT' ? 'Crédit' : '—'}
                   </span>
                 </div>
-                <div><span className="text-gray-500">Montant payé (avance) :</span> {(Number(detailVente.montantPaye) || 0).toLocaleString('fr-FR')} FCFA</div>
-                <div><span className="text-gray-500">Reste à payer :</span> <strong className="text-amber-800">{(Number(detailVente.montantTotal) - (Number(detailVente.montantPaye) || 0)).toLocaleString('fr-FR')} FCFA</strong></div>
-                <div><span className="text-gray-500">Statut :</span>
+                <div><span className="font-medium text-gray-700">Montant payé (avance) :</span> <span className="text-gray-900">{(Number(detailVente.montantPaye) || 0).toLocaleString('fr-FR')} FCFA</span></div>
+                <div><span className="font-medium text-gray-700">Reste à payer :</span> <strong className="text-amber-800">{(Number(detailVente.montantTotal) - (Number(detailVente.montantPaye) || 0)).toLocaleString('fr-FR')} FCFA</strong></div>
+                <div><span className="font-medium text-gray-700">Statut :</span>
                   <span className={`ml-1 rounded px-2 py-0.5 text-xs font-medium ${detailVente.statut === 'ANNULEE' ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-800'}`}>
                     {detailVente.statut === 'ANNULEE' ? 'Annulée' : 'Validée'}
                   </span>
                 </div>
               </div>
-              {detailVente.observation && <p className="text-sm text-gray-600"><span className="text-gray-500">Observation :</span> {detailVente.observation}</p>}
+              {detailVente.observation && <p className="text-sm"><span className="font-medium text-gray-700">Observation :</span> <span className="text-gray-900">{detailVente.observation}</span></p>}
               <div className="overflow-hidden rounded-lg border border-gray-200">
                 <table className="min-w-full text-sm">
-                  <thead><tr className="border-b bg-gray-50 text-left text-gray-600"><th className="px-4 py-2">Désignation</th><th className="px-4 py-2 text-right">Qté</th><th className="px-4 py-2 text-right">P.U.</th><th className="px-4 py-2 text-right">Total</th></tr></thead>
+                  <thead><tr className="border-b bg-gray-50 text-left text-gray-800"><th className="px-4 py-2">Désignation</th><th className="px-4 py-2 text-right">Qté</th><th className="px-4 py-2 text-right">P.U.</th><th className="px-4 py-2 text-right">Total</th></tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {detailVente.lignes.map((l, i) => (
-                      <tr key={i}><td className="px-4 py-2">{l.designation}</td><td className="px-4 py-2 text-right">{l.quantite}</td><td className="px-4 py-2 text-right">{(l.prixUnitaire).toLocaleString('fr-FR')} F</td><td className="px-4 py-2 text-right">{(l.montant).toLocaleString('fr-FR')} F</td></tr>
+                      <tr key={i}><td className="px-4 py-2 text-gray-900">{l.designation}</td><td className="px-4 py-2 text-right text-gray-900">{l.quantite}</td><td className="px-4 py-2 text-right text-gray-900">{(l.prixUnitaire).toLocaleString('fr-FR')} F</td><td className="px-4 py-2 text-right text-gray-900">{(l.montant).toLocaleString('fr-FR')} F</td></tr>
                     ))}
                   </tbody>
                 </table>

@@ -31,7 +31,7 @@ export async function GET() {
       prisma.mouvement.count({ where: { date: { gte: debAuj, lte: finAuj } } }).catch(catchZero('mouvement.count')),
       prisma.$queryRaw<[{ n: number }]>`SELECT COUNT(*) as n FROM Client WHERE actif = 1`.then((r) => Number(r[0]?.n ?? 0)).catch(catchZero('Client')),
       prisma.stock.count({ where: { quantite: { gt: 0 } } }).catch(catchZero('stock.count')),
-      prisma.produit.count().catch(catchZero('produit.count')),
+      prisma.produit.count({ where: { actif: true } }).catch(catchZero('produit.count')),
       // Optimisation : filtrer les stocks faibles directement en base avec une requête SQL
       // au lieu de charger tous les stocks puis filtrer en mémoire
       prisma.$queryRaw<Array<{
@@ -121,7 +121,7 @@ export async function GET() {
 
     const totalRef = categories.reduce((s, c) => s + c._count.id, 0)
     const repartition = totalRef > 0
-      ? categories.map((c) => ({ name: c.categorie || 'DIVERS', percent: Math.round((c._count.id / totalRef) * 100) })).sort((a, b) => b.percent - a.percent).slice(0, 6)
+      ? categories.map((c) => ({ name: c.categorie || 'DIVERS', percent: Math.round((c._count.id / totalRef) * 100) })).sort((a, b) => b.percent - a.percent)
       : []
 
     return NextResponse.json({

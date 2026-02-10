@@ -2,8 +2,12 @@
  * Construit GestiCom-Portable (dossier à copier sur clé USB).
  * À lancer depuis la racine : npm run build:portable
  *
- * Fait : build Next, db push, copie standalone + static + public + BD dans data/
- * L'utilisateur ajoute node.exe dans GestiCom-Portable, puis lance Lancer.bat.
+ * RÈGLE IMPORTANTE : Le portable utilise TOUJOURS la base à jour :
+ * - Sous Windows : C:\gesticom\gesticom.db (base de production) si elle existe,
+ *   sinon prisma/gesticom.db. Pensez à mettre à jour C:\gesticom\gesticom.db
+ *   avant chaque build:portable pour que le portable parte avec les bons produits/stocks.
+ * - Fait : build Next, db push, copie standalone + static + public + BD dans data/
+ * - L'utilisateur ajoute node.exe dans GestiCom-Portable, puis lance Lancer.bat.
  */
 
 const path = require('path')
@@ -15,7 +19,10 @@ const outDir = path.join(projectRoot, 'GestiCom-Portable')
 const standaloneSrc = path.join(projectRoot, '.next', 'standalone')
 const staticSrc = path.join(projectRoot, '.next', 'static')
 const publicSrc = path.join(projectRoot, 'public')
-const dbSrc = path.join(projectRoot, 'prisma', 'gesticom.db')
+
+/** Toujours utiliser la base de production à jour pour le portable (C:\gesticom\gesticom.db sous Windows). */
+const dbProd = process.platform === 'win32' ? path.join('C:', 'gesticom', 'gesticom.db') : path.join(projectRoot, 'prisma', 'gesticom.db')
+const dbSrc = (process.platform === 'win32' && fs.existsSync(dbProd)) ? dbProd : path.join(projectRoot, 'prisma', 'gesticom.db')
 
 /** Nombre max de sauvegardes à conserver par type (les plus récentes). Les anciennes sont supprimées. */
 const MAX_BACKUPS_TO_KEEP = 2
@@ -47,6 +54,15 @@ function cleanupOldBackups(pattern) {
       console.warn('  Impossible de supprimer ' + f.name + ':', e.message)
     }
   }
+}
+
+// Supprimer un éventuel lock Next.js pour éviter "Unable to acquire lock" (build précédent interrompu)
+const nextLock = path.join(projectRoot, '.next', 'lock')
+if (fs.existsSync(nextLock)) {
+  try {
+    fs.unlinkSync(nextLock)
+    console.log('Lock .next/lock supprime (build precedent interrompu).')
+  } catch (_) {}
 }
 
 console.log('Build GestiCom (prisma + next)...')
@@ -113,8 +129,39 @@ function cpRecursive(src, dest) {
 
 console.log('Copie .next/standalone...')
 for (const e of fs.readdirSync(standaloneSrc)) {
-  if (e === 'GestiCom-Portable') continue
+  if (e === 'GestiCom-Portable' || e === 'Projets') continue
   cpRecursive(path.join(standaloneSrc, e), path.join(outDir, e))
+}
+
+// S'assurer que server.js est à la racine du portable (Next peut le mettre dans un sous-dossier en monorepo)
+function findServerJs(dir) {
+  const p = path.join(dir, 'server.js')
+  if (fs.existsSync(p)) return p
+  try {
+    for (const e of fs.readdirSync(dir)) {
+      const full = path.join(dir, e)
+      if (fs.statSync(full).isDirectory() && e !== 'node_modules' && e !== '.next') {
+        const found = findServerJs(full)
+        if (found) return found
+      }
+    }
+  } catch (_) {}
+  return null
+}
+const serverJsDest = path.join(outDir, 'server.js')
+if (!fs.existsSync(serverJsDest)) {
+  const found = findServerJs(outDir)
+  if (found) {
+    fs.copyFileSync(found, serverJsDest)
+    console.log('Copie server.js vers la racine du portable.')
+  } else {
+    const inStandalone = path.join(standaloneSrc, 'server.js')
+    if (fs.existsSync(inStandalone)) fs.copyFileSync(inStandalone, serverJsDest)
+  }
+}
+if (!fs.existsSync(serverJsDest)) {
+  console.error('Erreur: server.js introuvable dans .next/standalone. Relancez npm run build puis npm run build:portable.')
+  process.exit(1)
 }
 
 const nextDir = path.join(outDir, '.next')
@@ -135,10 +182,16 @@ const dataDir = path.join(outDir, 'data')
 fs.mkdirSync(dataDir, { recursive: true })
 execSync('npx prisma db push', { cwd: projectRoot, stdio: 'inherit' })
 if (fs.existsSync(dbSrc)) {
-  fs.copyFileSync(dbSrc, path.join(dataDir, 'gesticom.db'))
-  console.log('Copie prisma/gesticom.db -> data/gesticom.db')
+  const destDb = path.join(dataDir, 'gesticom.db')
+  fs.copyFileSync(dbSrc, destDb)
+  const sourceLabel = (dbSrc.indexOf('C:') !== -1 && dbSrc.indexOf('gesticom') !== -1) ? 'C:\\gesticom\\gesticom.db (base de production)' : 'prisma/gesticom.db'
+  console.log('Base utilisee pour le portable : ' + sourceLabel)
+  console.log('  -> Copie vers GestiCom-Portable/data/gesticom.db')
+  if (dbSrc === dbProd) {
+    console.log('  (Rappel : le portable part toujours avec cette base a jour. Voir docs/CONVENTION_BASE_PORTABLE.md)')
+  }
 } else {
-  console.warn('prisma/gesticom.db absent. Lancez npx prisma db push et npm run db:seed.')
+  console.warn('Base source absente. Utilisez C:\\gesticom\\gesticom.db ou prisma/gesticom.db (npx prisma db push, npm run db:seed).')
 }
 if (backupPortableDb) {
   console.log('')
@@ -226,7 +279,14 @@ const guideUserPath = path.join(projectRoot, 'docs', 'GUIDE_UTILISATEUR.md')
 if (fs.existsSync(guideUserPath)) {
   fs.copyFileSync(guideUserPath, path.join(outDir, 'GUIDE_UTILISATEUR.md'))
   console.log('Copie GUIDE_UTILISATEUR.md')
-} else {
+}
+// Copier le guide d'utilisation pratique (navigation et menus)
+const guidePratiquePath = path.join(projectRoot, 'docs', 'GUIDE_UTILISATION_PRATIQUE.md')
+if (fs.existsSync(guidePratiquePath)) {
+  fs.copyFileSync(guidePratiquePath, path.join(outDir, 'GUIDE_UTILISATION_PRATIQUE.md'))
+  console.log('Copie GUIDE_UTILISATION_PRATIQUE.md')
+}
+if (!fs.existsSync(guideUserPath)) {
   // Créer un guide utilisateur basique si absent
   const guideUserBasic = `# Guide Utilisateur - GestiCom Portable
 

@@ -40,7 +40,8 @@ const navigation: Array<{
   name: string
   href: string
   icon: typeof LayoutDashboard
-  roles?: string[] // si défini : visible uniquement pour ces rôles (ex. Comptabilité)
+  roles?: string[]
+  permission?: string // si défini : visible si l'utilisateur a cette permission (ex. parametres:view)
 }> = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Produits', href: '/dashboard/produits', icon: Package },
@@ -57,7 +58,7 @@ const navigation: Array<{
   { name: 'Comptabilité', href: '/dashboard/comptabilite', icon: Calculator, roles: ['SUPER_ADMIN', 'COMPTABLE'] },
   { name: 'Utilisateurs', href: '/dashboard/utilisateurs', icon: UserPlus, roles: ['SUPER_ADMIN', 'ADMIN'] },
   { name: 'Journal d\'audit', href: '/dashboard/audit', icon: Activity, roles: ['SUPER_ADMIN', 'ADMIN'] },
-  { name: 'Paramètres', href: '/dashboard/parametres', icon: Settings, roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { name: 'Paramètres', href: '/dashboard/parametres', icon: Settings, roles: ['SUPER_ADMIN', 'ADMIN'], permission: 'parametres:view' },
 ]
 
 function initials(nom: string): string {
@@ -76,12 +77,14 @@ type Notification = {
   lu: boolean
 }
 
+export type UserWithPermissions = Session & { permissions?: string[] }
+
 export default function DashboardLayoutClient({
   children,
   user,
 }: {
   children: React.ReactNode
-  user: Session
+  user: UserWithPermissions
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -367,7 +370,12 @@ export default function DashboardLayoutClient({
 
           <nav className="flex-1 space-y-1 overflow-y-auto p-4">
             {navigation
-              .filter((item) => !item.roles || item.roles.includes(user.role))
+              .filter((item) => {
+                if (!item.roles && !item.permission) return true
+                if (item.roles && item.roles.includes(user.role)) return true
+                if (item.permission && user.permissions?.includes(item.permission)) return true
+                return false
+              })
               .map((item) => {
               const isActive = pathname === item.href
               const Icon = item.icon

@@ -99,7 +99,7 @@ export default function Home() {
 
         <div className="mt-10 pt-6 border-t border-gray-200">
           <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-            <Shield className="h-4 w-4 text-green-500" />
+            <Shield className="h-4 w-4 text-orange-500" />
             <span>Version 1.0.0 - Offline Ready - Sécurisé</span>
             <div>
             </div>
@@ -107,7 +107,7 @@ export default function Home() {
         </div>
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
             
-            <span>Pacousstar - 0544814924</span>
+            <span>Pacousstar - 05 44 81 49 24</span>
             <div>
             </div>
           </div>

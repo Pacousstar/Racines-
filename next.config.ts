@@ -1,12 +1,23 @@
 import type { NextConfig } from "next";
+import path from "path";
 import withPWA from "@ducanh2912/next-pwa";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
   output: "standalone", // pour livraison Option B : build autonome + lanceur (double-clic)
-  // Réduire les avertissements Turbopack (lockfiles multiples, cache) : lancer depuis la racine du projet
-  ...(typeof process !== "undefined" && { turbopack: { root: process.cwd() } } as { turbopack?: { root: string } }),
-  outputFileTracingExcludes: { "*": ["GestiCom-Portable/**"] },
+  // Forcer la racine de traçage = ce projet (évite multiple lockfiles → standalone vide)
+  outputFileTracingRoot: path.join(__dirname),
+  outputFileTracingExcludes: { "*": ["GestiCom-Portable/**", "gesticom/**"] },
+  // Exclure le dossier gesticom du build
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+      };
+    }
+    return config;
+  },
 };
 
 const pwaConfig = withPWA({

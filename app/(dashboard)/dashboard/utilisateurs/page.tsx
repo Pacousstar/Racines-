@@ -40,6 +40,7 @@ export default function UtilisateursPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string>('Utilisateur créé avec succès !')
   const { success: showSuccessToast, error: showErrorToast } = useToast()
   const [showEdit, setShowEdit] = useState(false)
   const [editingUser, setEditingUser] = useState<Utilisateur | null>(null)
@@ -64,9 +65,9 @@ export default function UtilisateursPage() {
 
   useEffect(() => {
     if (success === 'created') {
+      setSuccessMessage('Utilisateur créé avec succès !')
       setShowSuccess(true)
       setTimeout(() => setShowSuccess(false), 5000)
-      // Nettoyer l'URL
       router.replace('/dashboard/utilisateurs')
     }
     loadUtilisateurs()
@@ -238,6 +239,7 @@ export default function UtilisateursPage() {
 
       setShowEdit(false)
       setEditingUser(null)
+      setSuccessMessage('Utilisateur modifié avec succès.')
       setShowSuccess(true)
       setTimeout(() => setShowSuccess(false), 5000)
       loadUtilisateurs()
@@ -262,19 +264,20 @@ export default function UtilisateursPage() {
     try {
       const res = await fetch(`/api/utilisateurs/${userId}`, {
         method: 'DELETE',
+        credentials: 'same-origin',
       })
-
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const errorMsg = formatApiError(data.error || 'Erreur lors de la désactivation de l\'utilisateur.')
+        const errorMsg = formatApiError(data?.error || 'Erreur lors de la désactivation de l\'utilisateur.')
         setError(errorMsg)
         showErrorToast(errorMsg)
         return
       }
 
+      setSuccessMessage('Utilisateur désactivé avec succès.')
       setShowSuccess(true)
       setTimeout(() => setShowSuccess(false), 5000)
-      loadUtilisateurs()
+      setUtilisateurs((prev) => prev.filter((u) => u.id !== userId))
       showSuccessToast('Utilisateur désactivé avec succès.')
     } catch (err) {
       console.error('Erreur suppression utilisateur:', err)
@@ -305,7 +308,7 @@ export default function UtilisateursPage() {
       {showSuccess && (
         <div className="rounded-lg bg-green-50 border border-green-200 p-4 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-600" />
-          <p className="text-green-800 font-medium">Utilisateur créé avec succès !</p>
+          <p className="text-green-800 font-medium">{successMessage}</p>
         </div>
       )}
 

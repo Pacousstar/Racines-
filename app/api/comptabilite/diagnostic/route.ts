@@ -26,8 +26,20 @@ export async function GET() {
       orderBy: { code: 'asc' },
     })
 
+    // Compter les opérations (ventes, achats, dépenses, charges)
+    const [nbVentes, nbAchats, nbDepenses, nbCharges] = await Promise.all([
+      prisma.vente.count({ where: { statut: 'VALIDEE' } }),
+      prisma.achat.count(),
+      prisma.depense.count(),
+      prisma.charge.count(),
+    ])
+
     // Compter les écritures
     const nbEcritures = await prisma.ecritureComptable.count()
+    const ecrituresDateRange = await prisma.ecritureComptable.aggregate({
+      _min: { date: true },
+      _max: { date: true },
+    })
     const ecrituresParJournal = await prisma.ecritureComptable.groupBy({
       by: ['journalId'],
       _count: { id: true },
@@ -74,6 +86,14 @@ export async function GET() {
     )
 
     return NextResponse.json({
+      operations: {
+        ventes: nbVentes,
+        achats: nbAchats,
+        depenses: nbDepenses,
+        charges: nbCharges,
+      },
+      ecrituresDateMin: ecrituresDateRange._min.date?.toISOString().split('T')[0] ?? null,
+      ecrituresDateMax: ecrituresDateRange._max.date?.toISOString().split('T')[0] ?? null,
       planComptes: {
         total: nbComptes,
         parClasse: comptesParClasse.map(c => ({

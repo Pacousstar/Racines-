@@ -214,7 +214,7 @@ export default function DashboardPage() {
         <p className="mt-2 text-white/90">Vue d&apos;ensemble opérationnelle — stocks, alertes, activité</p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {stats
           .map((stat, i) => {
             let widgetId = ''
@@ -446,7 +446,7 @@ export default function DashboardPage() {
                 <h2 className="text-xl font-bold text-white">Répartition par catégorie</h2>
               </div>
           <div className="p-6">
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               {repartition.map((c, i) => {
                 const colors = [
                   'from-blue-500 to-cyan-600',
@@ -496,8 +496,8 @@ export default function DashboardPage() {
                     <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
                   </div>
                 ) : statsGraphiques?.topProduits && statsGraphiques.topProduits.length > 0 ? (
-                  <div className="space-y-3">
-                    {statsGraphiques.topProduits.slice(0, 5).map((p, i) => (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {statsGraphiques.topProduits.map((p, i) => (
                       <div key={p.produitId} className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0">
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-sm font-bold text-white">

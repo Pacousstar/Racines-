@@ -46,15 +46,23 @@ export default function EcrituresPage() {
     referenceType: '',
     referenceId: '',
   })
-  // Initialiser les dates par défaut (mois en cours)
+  // Par défaut : début de l'année précédente jusqu'à fin du mois en cours (pour inclure écritures importées, souvent en 2025)
   const now = new Date()
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  const [dateDebut, setDateDebut] = useState(firstDay.toISOString().split('T')[0])
-  const [dateFin, setDateFin] = useState(lastDay.toISOString().split('T')[0])
+  const firstDayPreviousYear = new Date(now.getFullYear() - 1, 0, 1)
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const [dateDebut, setDateDebut] = useState(firstDayPreviousYear.toISOString().split('T')[0])
+  const [dateFin, setDateFin] = useState(lastDayOfMonth.toISOString().split('T')[0])
   const [filtreJournal, setFiltreJournal] = useState('')
   const [filtreCompte, setFiltreCompte] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [backfilling, setBackfilling] = useState(false)
+  const [toutesLesDates, setToutesLesDates] = useState(false)
+  const [diagnostic, setDiagnostic] = useState<{
+    operations?: { ventes: number; achats: number; depenses: number; charges: number }
+    ecritures?: { total: number; parType?: { type: string; nombre: number }[] }
+    ecrituresDateMin?: string | null
+    ecrituresDateMax?: string | null
+  } | null>(null)
 
   useEffect(() => {
     fetch('/api/journaux')
@@ -68,8 +76,10 @@ export default function EcrituresPage() {
   const fetchEcritures = () => {
     setLoading(true)
     const params = new URLSearchParams({ limit: '500' })
-    if (dateDebut) params.set('dateDebut', dateDebut)
-    if (dateFin) params.set('dateFin', dateFin)
+    if (!toutesLesDates) {
+      if (dateDebut) params.set('dateDebut', dateDebut)
+      if (dateFin) params.set('dateFin', dateFin)
+    }
     if (filtreJournal) params.set('journalId', filtreJournal)
     if (filtreCompte) params.set('compteId', filtreCompte)
     
@@ -79,9 +89,27 @@ export default function EcrituresPage() {
       .finally(() => setLoading(false))
   }
 
+  const fetchDiagnostic = () => {
+    fetch('/api/comptabilite/diagnostic')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setDiagnostic({
+          operations: d.operations,
+          ecritures: d.ecritures ? { total: d.ecritures.total, parType: d.ecritures.parType } : undefined,
+          ecrituresDateMin: d.ecrituresDateMin,
+          ecrituresDateMax: d.ecrituresDateMax,
+        })
+      })
+      .catch(() => setDiagnostic(null))
+  }
+
   useEffect(() => {
     fetchEcritures()
-  }, [dateDebut, dateFin, filtreJournal, filtreCompte])
+  }, [dateDebut, dateFin, filtreJournal, filtreCompte, toutesLesDates])
+
+  useEffect(() => {
+    fetchDiagnostic()
+  }, [])
 
   const resetForm = () => {
     setFormData({
@@ -252,7 +280,38 @@ export default function EcrituresPage() {
         </div>
       </div>
 
-      {/* Filtres */}
+      {/* Résumé base (ventes, achats, dépenses, charges, écritures) */}
+      {diagnostic && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <h3 className="text-sm font-semibold text-gray-800 mb-2">Contenu de la base</h3>
+          <div className="flex flex-wrap gap-6 text-sm">
+            <span className="text-gray-700">Ventes (validées): <strong>{diagnostic.operations?.ventes ?? '-'}</strong></span>
+            <span className="text-gray-700">Achats: <strong>{diagnostic.operations?.achats ?? '-'}</strong></span>
+            <span className="text-gray-700">Dépenses: <strong>{diagnostic.operations?.depenses ?? '-'}</strong></span>
+            <span className="text-gray-700">Charges: <strong>{diagnostic.operations?.charges ?? '-'}</strong></span>
+            <span className="text-gray-700 border-l pl-4">Écritures: <strong>{diagnostic.ecritures?.total ?? '-'}</strong></span>
+            {diagnostic.ecritures?.parType && diagnostic.ecritures.parType.length > 0 && (
+              <span className="text-gray-600">
+                ({diagnostic.ecritures.parType.map((t) => `${t.type || 'MANUEL'}: ${t.nombre}`).join(', ')})
+              </span>
+            )}
+            {(diagnostic.ecrituresDateMin || diagnostic.ecrituresDateMax) && (
+              <span className="text-gray-600">
+                Période écritures: {diagnostic.ecrituresDateMin ?? '?'} → {diagnostic.ecrituresDateMax ?? '?'}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={fetchDiagnostic}
+            className="mt-2 text-xs text-blue-600 hover:underline"
+          >
+            Actualiser le résumé
+          </button>
+        </div>
+      )}
+
+      {/* Filtres et backfill */}
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex flex-wrap items-center gap-4">
           <button
@@ -262,17 +321,56 @@ export default function EcrituresPage() {
             <Filter className="h-4 w-4" />
             Filtres
           </button>
+          <button
+            type="button"
+            disabled={backfilling}
+            onClick={async () => {
+              setBackfilling(true)
+              try {
+                const res = await fetch('/api/comptabilite/backfill-ecritures', { method: 'POST' })
+                const data = await res.json().catch(() => ({}))
+                if (res.ok && data.ok) {
+                  showSuccess(data.message || 'Écritures générées.')
+                  fetchEcritures()
+                  fetchDiagnostic()
+                } else {
+                  showError(data.error || data.message || 'Erreur lors de la génération.')
+                }
+              } catch (e) {
+                showError('Erreur réseau.')
+              } finally {
+                setBackfilling(false)
+              }
+            }}
+            className="flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50"
+            title="Génère les écritures pour les ventes, achats et dépenses qui n'en ont pas encore (ex. après import)."
+          >
+            {backfilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Générer écritures manquantes
+          </button>
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid grid-cols-1 gap-4 border-t pt-4 md:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-4 border-t pt-4 md:grid-cols-5">
+            <div className="flex items-end gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={toutesLesDates}
+                  onChange={(e) => setToutesLesDates(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-700">Toutes les dates</span>
+              </label>
+            </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Date début</label>
               <input
                 type="date"
                 value={dateDebut}
                 onChange={(e) => setDateDebut(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                disabled={toutesLesDates}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-50"
               />
             </div>
             <div>
@@ -281,7 +379,8 @@ export default function EcrituresPage() {
                 type="date"
                 value={dateFin}
                 onChange={(e) => setDateFin(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                disabled={toutesLesDates}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-50"
               />
             </div>
             <div>
@@ -346,10 +445,10 @@ export default function EcrituresPage() {
                     <td className="px-4 py-3 text-sm text-gray-900">
                       {new Date(e.date).toLocaleDateString('fr-FR')}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{e.journal.code}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{e.piece || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{e.journal.code}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{e.piece || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{e.libelle}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-3 text-sm text-gray-900">
                       {e.compte.numero} - {e.compte.libelle}
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-medium text-red-600">
@@ -392,7 +491,7 @@ export default function EcrituresPage() {
               <h2 className="text-xl font-bold text-gray-900">
                 {editing ? 'Modifier l\'écriture' : 'Nouvelle écriture'}
               </h2>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
+              <button onClick={resetForm} className="text-gray-600 hover:text-gray-900" aria-label="Fermer">
                 <X className="h-6 w-6" />
               </button>
             </div>
@@ -408,16 +507,16 @@ export default function EcrituresPage() {
                     required
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Journal *</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Journal *</label>
                   <select
                     required
                     value={formData.journalId}
                     onChange={(e) => setFormData({ ...formData, journalId: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   >
                     <option value="">—</option>
                     {journaux.map((j) => (
@@ -426,22 +525,22 @@ export default function EcrituresPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pièce justificative</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Pièce justificative</label>
                   <input
                     type="text"
                     value={formData.piece}
                     onChange={(e) => setFormData({ ...formData, piece: e.target.value })}
                     placeholder="Numéro de pièce"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Compte *</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Compte *</label>
                   <select
                     required
                     value={formData.compteId}
                     onChange={(e) => setFormData({ ...formData, compteId: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   >
                     <option value="">—</option>
                     {comptes.map((c) => (
@@ -451,19 +550,19 @@ export default function EcrituresPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Libellé *</label>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Libellé *</label>
                 <input
                   type="text"
                   required
                   value={formData.libelle}
                   onChange={(e) => setFormData({ ...formData, libelle: e.target.value })}
                   placeholder="Description de l'écriture"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                 />
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Débit (FCFA)</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Débit (FCFA)</label>
                   <input
                     type="number"
                     min="0"
@@ -474,11 +573,11 @@ export default function EcrituresPage() {
                       setFormData({ ...formData, debit: val, credit: val ? '' : formData.credit })
                     }}
                     placeholder="0"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Crédit (FCFA)</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Crédit (FCFA)</label>
                   <input
                     type="number"
                     min="0"
@@ -489,17 +588,17 @@ export default function EcrituresPage() {
                       setFormData({ ...formData, credit: val, debit: val ? '' : formData.debit })
                     }}
                     placeholder="0"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type référence</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Type référence</label>
                   <select
                     value={formData.referenceType}
                     onChange={(e) => setFormData({ ...formData, referenceType: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   >
                     <option value="">—</option>
                     <option value="VENTE">Vente</option>
@@ -510,23 +609,23 @@ export default function EcrituresPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ID référence</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">ID référence</label>
                   <input
                     type="number"
                     value={formData.referenceId}
                     onChange={(e) => setFormData({ ...formData, referenceId: e.target.value })}
                     placeholder="ID de l'opération"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Référence</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Référence</label>
                   <input
                     type="text"
                     value={formData.reference}
                     onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
                     placeholder="Référence libre"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 bg-white"
                   />
                 </div>
               </div>

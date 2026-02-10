@@ -143,7 +143,7 @@ export default function DiagnosticButton() {
                       <span className="font-medium">Par classe :</span>
                       <div className="mt-1 flex flex-wrap gap-2">
                         {data.planComptes.parClasse.map((c) => (
-                          <span key={c.classe} className="px-2 py-1 bg-gray-100 rounded text-gray-700">
+                          <span key={c.classe} className="px-2 py-1 bg-gray-100 rounded text-gray-900">
                             Classe {c.classe}: {c.nombre}
                           </span>
                         ))}
@@ -240,14 +240,14 @@ export default function DiagnosticButton() {
                               <th className="px-2 py-1 text-right">Crédit</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-100">
+                          <tbody className="divide-y divide-gray-200 bg-white">
                             {data.ecritures.dernieres.map((e, i) => (
-                              <tr key={i}>
-                                <td className="px-2 py-1">{e.date}</td>
-                                <td className="px-2 py-1">{e.journal}</td>
-                                <td className="px-2 py-1">{e.compte}</td>
-                                <td className="px-2 py-1 text-right">{e.debit > 0 ? e.debit.toLocaleString('fr-FR') : '—'}</td>
-                                <td className="px-2 py-1 text-right">{e.credit > 0 ? e.credit.toLocaleString('fr-FR') : '—'}</td>
+                              <tr key={i} className="bg-white text-gray-900 hover:bg-gray-50">
+                                <td className="px-2 py-1 text-gray-900">{e.date}</td>
+                                <td className="px-2 py-1 text-gray-900">{e.journal}</td>
+                                <td className="px-2 py-1 text-gray-900">{e.compte}</td>
+                                <td className="px-2 py-1 text-right text-gray-900">{e.debit > 0 ? e.debit.toLocaleString('fr-FR') : '—'}</td>
+                                <td className="px-2 py-1 text-right text-gray-900">{e.credit > 0 ? e.credit.toLocaleString('fr-FR') : '—'}</td>
                               </tr>
                             ))}
                           </tbody>

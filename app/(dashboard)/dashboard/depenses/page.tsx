@@ -470,22 +470,9 @@ export default function DepensesPage() {
                     <td className="px-4 py-3 text-sm font-semibold text-gray-900">
                       {d.montant.toLocaleString('fr-FR')} FCFA
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                        d.statutPaiement === 'PAYE' ? 'bg-green-100 text-green-800' :
-                        d.statutPaiement === 'PARTIEL' ? 'bg-amber-100 text-amber-800' :
-                        d.statutPaiement === 'CREDIT' ? 'bg-orange-100 text-orange-800' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {d.statutPaiement === 'PAYE' ? 'Payé' : d.statutPaiement === 'PARTIEL' ? 'Partiel' : d.statutPaiement === 'CREDIT' ? 'Crédit' : '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-amber-800">
-                      {(d.montant - (d.montantPaye ?? 0)).toLocaleString('fr-FR')} FCFA
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{d.modePaiement}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{d.beneficiaire || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{d.magasin?.nom || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{d.modePaiement}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{d.beneficiaire || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{d.magasin?.nom || d.magasin?.code || '—'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button

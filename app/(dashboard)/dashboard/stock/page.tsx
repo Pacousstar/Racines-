@@ -821,10 +821,10 @@ export default function StockPage() {
                     <th className="px-4 py-2 text-right">Écart</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200 bg-white">
                   {filteredList.filter((s) => s.id != null).length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
+                    <tr className="bg-white">
+                      <td colSpan={5} className="px-4 py-6 text-center text-gray-600">
                         Aucune ligne de stock à inventorier. Créez des produits avec leur magasin pour voir les stocks.
                       </td>
                     </tr>
@@ -833,15 +833,15 @@ export default function StockPage() {
                     const reel = inventaireReelles[key] !== '' ? Math.max(0, Math.floor(Number(inventaireReelles[key]) || 0)) : null
                     const ecart = reel !== null ? reel - s.quantite : null
                     return (
-                      <tr key={key}>
-                        <td className="px-4 py-2 font-mono">{s.produit.code}</td>
-                        <td className="px-4 py-2">{s.magasin.code}</td>
-                        <td className="px-4 py-2 text-right">{s.quantite}</td>
+                      <tr key={key} className="bg-white text-gray-900 hover:bg-gray-50">
+                        <td className="px-4 py-2 font-mono text-gray-900">{s.produit.code}</td>
+                        <td className="px-4 py-2 text-gray-900">{s.magasin.code}</td>
+                        <td className="px-4 py-2 text-right text-gray-900">{s.quantite}</td>
                         <td className="px-4 py-2">
                           <input
                             type="number"
                             min="0"
-                            className="w-24 rounded border border-gray-200 px-2 py-1"
+                            className="w-24 rounded border border-gray-200 bg-white px-2 py-1 text-gray-900"
                             value={inventaireReelles[key] ?? ''}
                             onChange={(e) => setInventaireReelles((prev) => ({ ...prev, [key]: e.target.value }))}
                             placeholder={String(s.quantite)}
@@ -849,7 +849,7 @@ export default function StockPage() {
                         </td>
                         <td className="px-4 py-2 text-right">
                           {ecart !== null && ecart !== 0 && (
-                            <span className={ecart > 0 ? 'text-green-600' : 'text-red-600'}>
+                            <span className={ecart > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
                               {ecart > 0 ? '+' : ''}{ecart}
                             </span>
                           )}

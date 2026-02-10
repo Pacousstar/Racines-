@@ -394,21 +394,21 @@ export default function AchatsPage() {
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
         <div>
-          <label className="block text-xs font-medium text-gray-500">Du</label>
+          <label className="block text-xs font-medium text-gray-700">Du</label>
           <input
             type="date"
             value={dateDebut}
             onChange={(e) => setDateDebut(e.target.value)}
-            className="mt-1 rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+            className="mt-1 rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-gray-900 bg-white"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500">Au</label>
+          <label className="block text-xs font-medium text-gray-700">Au</label>
           <input
             type="date"
             value={dateFin}
             onChange={(e) => setDateFin(e.target.value)}
-            className="mt-1 rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+            className="mt-1 rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-gray-900 bg-white"
           />
         </div>
         <button
@@ -461,17 +461,17 @@ export default function AchatsPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Date *</label>
+                <label className="block text-sm font-medium text-gray-800">Date *</label>
                 <input
                   type="date"
                   required
                   value={formData.date}
                   onChange={(e) => setFormData((f) => ({ ...f, date: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 focus:border-orange-500 focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-gray-900 bg-white focus:border-orange-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Magasin *</label>
+                <label className="block text-sm font-medium text-gray-800">Magasin *</label>
                 <select
                   required
                   value={formData.magasinId}
@@ -514,7 +514,7 @@ export default function AchatsPage() {
                   onChange={(e) => setFormData((f) => ({ ...f, fournisseurLibre: e.target.value }))}
                   placeholder="Si pas de fiche fournisseur"
                   disabled={!!formData.fournisseurId}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 disabled:bg-gray-100 focus:border-orange-500 focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-gray-900 disabled:bg-gray-100 disabled:text-gray-700 focus:border-orange-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -775,11 +775,11 @@ export default function AchatsPage() {
             </div>
             <div className="space-y-4 p-6">
               <div className="grid gap-3 text-sm sm:grid-cols-2">
-                <div><span className="text-gray-500">Date :</span> {new Date(detailAchat.date).toLocaleString('fr-FR')}</div>
-                <div><span className="text-gray-500">Magasin :</span> {detailAchat.magasin.code} – {detailAchat.magasin.nom}</div>
-                <div><span className="text-gray-500">Fournisseur :</span> {detailAchat.fournisseur?.nom || detailAchat.fournisseurLibre || '—'}</div>
-                <div><span className="text-gray-500">Paiement :</span> {detailAchat.modePaiement}</div>
-                <div><span className="text-gray-500">Statut paiement :</span>
+                <div><span className="font-medium text-gray-700">Date :</span> <span className="text-gray-900">{new Date(detailAchat.date).toLocaleString('fr-FR')}</span></div>
+                <div><span className="font-medium text-gray-700">Magasin :</span> <span className="text-gray-900">{detailAchat.magasin.code} – {detailAchat.magasin.nom}</span></div>
+                <div><span className="font-medium text-gray-700">Fournisseur :</span> <span className="text-gray-900">{detailAchat.fournisseur?.nom || detailAchat.fournisseurLibre || '—'}</span></div>
+                <div><span className="font-medium text-gray-700">Paiement :</span> <span className="text-gray-900">{detailAchat.modePaiement}</span></div>
+                <div><span className="font-medium text-gray-700">Statut paiement :</span>
                   <span className={`ml-1 rounded px-2 py-0.5 text-xs font-medium ${
                     detailAchat.statutPaiement === 'PAYE' ? 'bg-green-100 text-green-800' :
                     detailAchat.statutPaiement === 'PARTIEL' ? 'bg-amber-100 text-amber-800' :
@@ -788,16 +788,16 @@ export default function AchatsPage() {
                     {detailAchat.statutPaiement === 'PAYE' ? 'Payé' : detailAchat.statutPaiement === 'PARTIEL' ? 'Partiel' : detailAchat.statutPaiement === 'CREDIT' ? 'Crédit' : '—'}
                   </span>
                 </div>
-                <div><span className="text-gray-500">Montant payé (avance) :</span> {(Number(detailAchat.montantPaye) || 0).toLocaleString('fr-FR')} FCFA</div>
-                <div><span className="text-gray-500">Reste à payer :</span> <strong className="text-amber-800">{(Number(detailAchat.montantTotal) - (Number(detailAchat.montantPaye) || 0)).toLocaleString('fr-FR')} FCFA</strong></div>
+                <div><span className="font-medium text-gray-700">Montant payé (avance) :</span> <span className="text-gray-900">{(Number(detailAchat.montantPaye) || 0).toLocaleString('fr-FR')} FCFA</span></div>
+                <div><span className="font-medium text-gray-700">Reste à payer :</span> <strong className="text-amber-800">{(Number(detailAchat.montantTotal) - (Number(detailAchat.montantPaye) || 0)).toLocaleString('fr-FR')} FCFA</strong></div>
               </div>
-              {detailAchat.observation && <p className="text-sm text-gray-600"><span className="text-gray-500">Observation :</span> {detailAchat.observation}</p>}
+              {detailAchat.observation && <p className="text-sm"><span className="font-medium text-gray-700">Observation :</span> <span className="text-gray-900">{detailAchat.observation}</span></p>}
               <div className="overflow-hidden rounded-lg border border-gray-200">
                 <table className="min-w-full text-sm">
-                  <thead><tr className="border-b bg-gray-50 text-left text-gray-600"><th className="px-4 py-2">Désignation</th><th className="px-4 py-2 text-right">Qté</th><th className="px-4 py-2 text-right">P.U.</th><th className="px-4 py-2 text-right">Total</th></tr></thead>
+                  <thead><tr className="border-b bg-gray-50 text-left text-gray-800"><th className="px-4 py-2">Désignation</th><th className="px-4 py-2 text-right">Qté</th><th className="px-4 py-2 text-right">P.U.</th><th className="px-4 py-2 text-right">Total</th></tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {detailAchat.lignes.map((l, i) => (
-                      <tr key={i}><td className="px-4 py-2">{l.designation}</td><td className="px-4 py-2 text-right">{l.quantite}</td><td className="px-4 py-2 text-right">{l.prixUnitaire.toLocaleString('fr-FR')} F</td><td className="px-4 py-2 text-right">{l.montant.toLocaleString('fr-FR')} F</td></tr>
+                      <tr key={i}><td className="px-4 py-2 text-gray-900">{l.designation}</td><td className="px-4 py-2 text-right text-gray-900">{l.quantite}</td><td className="px-4 py-2 text-right text-gray-900">{l.prixUnitaire.toLocaleString('fr-FR')} F</td><td className="px-4 py-2 text-right text-gray-900">{l.montant.toLocaleString('fr-FR')} F</td></tr>
                     ))}
                   </tbody>
                 </table>

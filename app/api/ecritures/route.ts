@@ -13,15 +13,21 @@ export async function GET(request: NextRequest) {
   const compteId = request.nextUrl.searchParams.get('compteId')?.trim()
 
   const where: {
-    date?: { gte: Date; lte: Date }
+    date?: { gte?: Date; lte?: Date }
     journalId?: number
     compteId?: number
   } = {}
 
-  if (dateDebut && dateFin) {
-    where.date = {
-      gte: new Date(dateDebut + 'T00:00:00'),
-      lte: new Date(dateFin + 'T23:59:59'),
+  if (dateDebut || dateFin) {
+    if (dateDebut && dateFin) {
+      where.date = {
+        gte: new Date(dateDebut + 'T00:00:00'),
+        lte: new Date(dateFin + 'T23:59:59'),
+      }
+    } else if (dateDebut) {
+      where.date = { gte: new Date(dateDebut + 'T00:00:00') }
+    } else {
+      where.date = { lte: new Date(dateFin! + 'T23:59:59') }
     }
   }
 

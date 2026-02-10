@@ -33,23 +33,28 @@ if (process.platform === 'win32' && dbPath.includes(' ')) {
   try {
     if (!fs.existsSync(fallbackDir)) fs.mkdirSync(fallbackDir, { recursive: true })
     const fallbackExists = fs.existsSync(fallback)
-    // Ne jamais écraser C:\ avec data/ si C:\ existe déjà : ainsi les enregistrements
-    // faits lors de la dernière session (écrits dans C:\) sont conservés au redémarrage.
-    // Copier data/ vers C:\ uniquement au premier lancement (C:\ absent) ou si data/ est plus récente et plus grosse (cas rare).
-    if (!fallbackExists) {
+    const dataStat = fs.statSync(dbPath)
+    const dataNewer = fallbackExists ? (dataStat.mtime.getTime() > fs.statSync(fallback).mtime.getTime()) : true
+    const dataLarger = fallbackExists ? (dataStat.size > fs.statSync(fallback).size) : true
+    // Utiliser la base à jour : si data/ est plus récente ou plus grosse (nouveau build), on met à jour C:\
+    // pour que le portable parte avec la même base que la prod (C:\gesticom\gesticom.db copiée au build).
+    if (!fallbackExists || dataNewer || dataLarger) {
       fs.copyFileSync(dbPath, fallback)
       dbUrl = toFileUrl(fallback)
       dbToUse = fallback
       useFallback = true
-      const sizeKo = Math.round(fs.statSync(dbPath).size / 1024)
-      console.log('Base data/gesticom.db (' + sizeKo + ' Ko) copiee vers C:\\gesticom_portable_data.')
+      const sizeKo = Math.round(fs.statSync(fallback).size / 1024)
+      if (!fallbackExists) {
+        console.log('Base data/gesticom.db (' + sizeKo + ' Ko) copiee vers C:\\gesticom_portable_data.')
+      } else {
+        console.log('Base a jour : data/gesticom.db copiee vers C:\\gesticom_portable_data (' + sizeKo + ' Ko).')
+      }
     } else {
       dbUrl = toFileUrl(fallback)
       dbToUse = fallback
       useFallback = true
-      const fallbackSize = fs.statSync(fallback).size
-      const sizeKo = Math.round(fallbackSize / 1024)
-      console.log('Base C:\\gesticom_portable_data\\gesticom.db (' + sizeKo + ' Ko) utilisee (enregistrements conserves).')
+      const sizeKo = Math.round(fs.statSync(fallback).size / 1024)
+      console.log('Base C:\\gesticom_portable_data\\gesticom.db (' + sizeKo + ' Ko) utilisee (session precedente).')
     }
   } catch (e) {
     console.warn('Impossible d\'utiliser C:\\gesticom_portable_data:', e.message)
@@ -58,6 +63,7 @@ if (process.platform === 'win32' && dbPath.includes(' ')) {
 
 process.env.NODE_ENV = 'production'
 process.env.PORT = process.env.PORT || '3000'
+process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0'  // Écouter sur toutes les interfaces pour le réseau local
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'GestiCom-Portable-ChangeMe-InProduction-32c'
 process.env.DATABASE_URL = dbUrl
 
@@ -70,17 +76,24 @@ const envContent = [
 ].join('\n')
 fs.writeFileSync(path.join(base, '.env'), envContent, 'utf8')
 
-const runStandalone = `'use strict';
-var f = require('path').join(__dirname, '.database_url');
-if (require('fs').existsSync(f)) process.env.DATABASE_URL = require('fs').readFileSync(f, 'utf8').trim();
-require('./server.js');
-`
-fs.writeFileSync(path.join(base, 'run-standalone.js'), runStandalone, 'utf8')
-
-if (!fs.existsSync(path.join(base, 'server.js'))) {
+// Résoudre l'emplacement de server.js (racine du portable ou .next/standalone)
+let serverJsPath = path.join(base, 'server.js')
+if (!fs.existsSync(serverJsPath)) {
+  const alt = path.join(base, '.next', 'standalone', 'server.js')
+  if (fs.existsSync(alt)) serverJsPath = alt
+}
+if (!fs.existsSync(serverJsPath)) {
   console.error('Erreur: server.js introuvable. Lancez npm run build:portable.')
   process.exit(1)
 }
+const serverJsRequirePath = path.relative(base, serverJsPath).replace(/\\/g, '/').replace(/\.js$/, '') || 'server'
+const runStandalone = `'use strict';
+var path = require('path');
+var f = path.join(__dirname, '.database_url');
+if (require('fs').existsSync(f)) process.env.DATABASE_URL = require('fs').readFileSync(f, 'utf8').trim();
+require(path.join(__dirname, '${serverJsRequirePath}.js'));
+`
+fs.writeFileSync(path.join(base, 'run-standalone.js'), runStandalone, 'utf8')
 if (!fs.existsSync(path.join(base, '.next', 'static'))) {
   console.error('Erreur: .next/static manquant. Lancez npm run build:portable.')
   process.exit(1)
@@ -133,7 +146,12 @@ if (fs.existsSync(ensureSchemaPath)) {
 
 const child = spawn(process.execPath, ['run-standalone.js'], {
   cwd: base,
-  env: { ...process.env, DATABASE_URL: dbUrl },
+  env: { 
+    ...process.env, 
+    DATABASE_URL: dbUrl,
+    HOSTNAME: process.env.HOSTNAME || '0.0.0.0',  // Écouter sur toutes les interfaces pour le réseau local
+    PORT: process.env.PORT || '3000',
+  },
   stdio: 'inherit',
 })
 

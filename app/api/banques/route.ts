@@ -62,7 +62,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ce numéro de compte existe déjà.' }, { status: 400 })
     }
 
-    const entiteId = session.entiteId || session.userId
+    // entiteId : toujours depuis l'utilisateur (éviter userId comme entiteId → FK)
+    const user = await prisma.utilisateur.findUnique({
+      where: { id: session.userId },
+      select: { entiteId: true },
+    })
+    const entiteId = user?.entiteId ?? session.entiteId
+    if (!entiteId) {
+      return NextResponse.json({ error: 'Aucune entité associée à votre compte.' }, { status: 400 })
+    }
+
+    // compteId : accepter id ou numéro (512, 513, 514) ; résoudre par numéro si besoin
+    let compteIdFinal: number | null = null
+    if (compteId != null && compteId !== '') {
+      const num = Number(compteId)
+      const byId = await prisma.planCompte.findUnique({ where: { id: num }, select: { id: true } })
+      if (byId) {
+        compteIdFinal = byId.id
+      } else {
+        const byNumero = await prisma.planCompte.findFirst({
+          where: { numero: String(compteId).trim() },
+          select: { id: true },
+        })
+        if (byNumero) compteIdFinal = byNumero.id
+      }
+    }
 
     const banque = await prisma.banque.create({
       data: {
@@ -72,7 +96,7 @@ export async function POST(request: NextRequest) {
         soldeInitial: Number(soldeInitial) || 0,
         soldeActuel: Number(soldeInitial) || 0,
         entiteId,
-        compteId: compteId ? Number(compteId) : null,
+        compteId: compteIdFinal,
       },
       include: {
         compte: { select: { id: true, numero: true, libelle: true } },

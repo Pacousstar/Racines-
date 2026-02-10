@@ -136,6 +136,9 @@ export async function GET(request: NextRequest) {
     let currentY = y
     let currentClasse = ''
 
+    const colW = 195 - margin
+    const lineY = (y: number) => { doc.line(margin, y, margin + colW, y) }
+
     // En-têtes du tableau
     doc.setFont(undefined, 'bold')
     doc.text('Classe', margin, currentY)
@@ -146,14 +149,13 @@ export async function GET(request: NextRequest) {
     doc.text('Crédit', margin + 155, currentY)
     doc.text('Solde', margin + 175, currentY)
     currentY += lineHeight
-    doc.line(margin, currentY - 2, 195, currentY - 2)
+    lineY(currentY - 2)
 
     doc.setFont(undefined, 'normal')
     for (const entry of result) {
       if (currentY > pageHeight - 30) {
         doc.addPage()
         currentY = 20
-        // Réafficher les en-têtes
         doc.setFont(undefined, 'bold')
         doc.text('Classe', margin, currentY)
         doc.text('Numéro', margin + 20, currentY)
@@ -163,13 +165,12 @@ export async function GET(request: NextRequest) {
         doc.text('Crédit', margin + 155, currentY)
         doc.text('Solde', margin + 175, currentY)
         currentY += lineHeight
-        doc.line(margin, currentY - 2, 195, currentY - 2)
+        lineY(currentY - 2)
         doc.setFont(undefined, 'normal')
       }
 
       if (entry.compte.classe !== currentClasse) {
         currentClasse = entry.compte.classe
-        // En-tête de classe
         doc.setFont(undefined, 'bold')
         doc.text(`CLASSE ${currentClasse}`, margin, currentY)
         currentY += lineHeight
@@ -188,20 +189,22 @@ export async function GET(request: NextRequest) {
 
       currentY += lineHeight
 
-      // Total de classe si c'est le dernier de la classe
       const isLastOfClasse = result.findIndex((e, idx) => idx > result.indexOf(entry) && e.compte.classe === currentClasse) === -1
       if (isLastOfClasse && totauxParClasse[currentClasse]) {
         doc.setFont(undefined, 'bold')
         doc.text(`TOTAL CLASSE ${currentClasse}`, margin + 50, currentY)
         doc.text(formatMontant(totauxParClasse[currentClasse].debit), margin + 130, currentY)
         doc.text(formatMontant(totauxParClasse[currentClasse].credit), margin + 155, currentY)
-        currentY += lineHeight * 2
+        currentY += lineHeight
+        lineY(currentY - 1)
+        currentY += lineHeight
         doc.setFont(undefined, 'normal')
       }
     }
 
-    // Total général
     doc.setFont(undefined, 'bold')
+    lineY(currentY - 1)
+    currentY += 2
     doc.text('TOTAL GÉNÉRAL', margin + 50, currentY)
     doc.text(formatMontant(totalDebit), margin + 130, currentY)
     doc.text(formatMontant(totalCredit), margin + 155, currentY)

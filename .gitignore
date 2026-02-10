@@ -18,6 +18,9 @@ GestiCom-Portable.rar
 *.zip
 *.rar
 
+# Sous-projet gesticom
+gesticom/
+
 # Misc
 .DS_Store
 *.pem
@@ -44,6 +47,8 @@ prisma/prisma/
 
 # Backups
 backup-*.db
+gesticom-backup-*.db
+prisma/*.backup-*.db
 backups/
 
 # IDE
