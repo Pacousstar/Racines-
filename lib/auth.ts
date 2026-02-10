@@ -13,12 +13,16 @@ export type Session = {
 }
 
 function getSecret(): Uint8Array {
-  let s = process.env.SESSION_SECRET
+  let s = process.env.SESSION_SECRET?.trim()
   if (!s || s.length < 32) {
     if (process.env.NODE_ENV === 'development') {
       s = 'GestiCom-Dev-Default-Secret-32chars-Minimum!!'
     } else {
-      throw new Error('SESSION_SECRET manquant ou trop court (min. 32 caractères)')
+      // Portable ou prod sans .env : utiliser un secret par défaut long (éviter blocage connexion)
+      s = 'GestiCom-Portable-ChangeMe-InProduction-32chars!!'
+      if (!process.env.SESSION_SECRET) {
+        console.warn('[auth] SESSION_SECRET manquant ou trop court. Utilisez une clé d’au moins 32 caractères dans .env')
+      }
     }
   }
   return new TextEncoder().encode(s)

@@ -110,9 +110,9 @@ export default function VentesPage() {
     if (!detailVente) return
     const d = detailVente
     const date = new Date(d.date)
-    
-    // Préparer les données pour le template
-    const lignesHtml = generateLignesHTML(d.lignes.map((l) => ({
+    // Toutes les lignes (articles) de la vente sont affichées sur une même facture
+    const lignes = Array.isArray(d.lignes) ? d.lignes : []
+    const lignesHtml = generateLignesHTML(lignes.map((l) => ({
       designation: l.designation,
       quantite: l.quantite,
       prixUnitaire: l.prixUnitaire,
@@ -534,7 +534,7 @@ export default function VentesPage() {
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
         <div>
-          <label className="block text-xs font-medium text-gray-500">Du</label>
+          <label className="block text-xs font-medium text-gray-800">Du</label>
           <input
             type="date"
             value={dateDebut}
@@ -543,7 +543,7 @@ export default function VentesPage() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500">Au</label>
+          <label className="block text-xs font-medium text-gray-800">Au</label>
           <input
             type="date"
             value={dateFin}

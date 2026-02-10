@@ -64,7 +64,7 @@ export default function BalancePage() {
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+          className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
         >
           <Filter className="h-4 w-4" />
           Filtres
@@ -76,7 +76,7 @@ export default function BalancePage() {
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date début</label>
+              <label className="block text-xs font-medium text-gray-800 mb-1">Date début</label>
               <input
                 type="date"
                 value={dateDebut}
@@ -85,7 +85,7 @@ export default function BalancePage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date fin</label>
+              <label className="block text-xs font-medium text-gray-800 mb-1">Date fin</label>
               <input
                 type="date"
                 value={dateFin}

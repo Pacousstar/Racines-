@@ -97,18 +97,23 @@ if (fs.existsSync(oldDataDb)) {
 }
 if (process.platform === 'win32') {
   const cDriveDb = path.join('C:', 'gesticom_portable_data', 'gesticom.db')
-  if (fs.existsSync(cDriveDb)) {
-    const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12)
-    const backupC = path.join(projectRoot, 'backup-portable-C-drive-' + stamp + '.db')
-    fs.mkdirSync(path.dirname(backupC), { recursive: true })
-    fs.copyFileSync(cDriveDb, backupC)
-    console.log('Sauvegarde de C:\\gesticom_portable_data : ' + path.basename(backupC))
+  const localAppDataDb = path.join(process.env.LOCALAPPDATA || '', 'GestiComPortable', 'gesticom.db')
+  for (const db of [cDriveDb, localAppDataDb]) {
+    if (db && fs.existsSync(db)) {
+      const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12)
+      const name = db.includes('GestiComPortable') ? 'backup-portable-appdata-' : 'backup-portable-C-drive-'
+      const backupFile = path.join(projectRoot, name + stamp + '.db')
+      fs.mkdirSync(path.dirname(backupFile), { recursive: true })
+      fs.copyFileSync(db, backupFile)
+      console.log('Sauvegarde base portable : ' + path.basename(backupFile))
+    }
   }
 }
 
 // Ne garder que les N plus récentes sauvegardes de chaque type pour éviter l'accumulation
 cleanupOldBackups('backup-portable-data-')
 cleanupOldBackups('backup-portable-C-drive-')
+cleanupOldBackups('backup-portable-appdata-')
 
 rmDirSafe(outDir)
 fs.mkdirSync(outDir, { recursive: true })
@@ -246,14 +251,18 @@ const readme = `GestiCom — Version portable
    Une seule fenêtre navigateur s'ouvre sur http://localhost:3000
 
 3) Donnees
-   La base est dans data/gesticom.db (ou C:\\gesticom_portable_data si chemin avec espaces).
+   La base est dans data/gesticom.db.
    Compte par defaut : admin / Admin@123
    Au premier lancement, le schéma de la base est mis à jour automatiquement si besoin
    (colonnes montantPaye, table Depense, etc.). Vous pouvez vous déconnecter, éteindre le PC,
    relancer plus tard : la même base est conservée.
 
-4) Chemin avec espaces (ex. "GSN EXPETISES GROUP")
-   Le launcher utilise C:\\gesticom_portable_data\\gesticom.db. Au premier lancement il copie data/ vers C:\\. Aux lancements suivants il n'ecrase plus C:\\ : vos enregistrements sont conserves. A l'arret (fermez Lancer.bat), C:\\ est recopie vers data/. Fermez toujours Lancer.bat proprement (ne tuez pas le processus).
+4) Ou enregistrer les donnees (IMPORTANT)
+   Pour le MEME comportement qu'en developpement : copiez ce dossier dans un chemin SANS ESPACES.
+   Exemples : C:\\GestiCom-Portable   ou   D:\\GestiCom-Portable
+   Les donnees seront alors dans data/gesticom.db (comme en dev). Si le chemin contient des espaces
+   (ex. Bureau "CA ENTREPRISE"), la base est copiee vers %LOCALAPPDATA%\\GestiComPortable.
+   A l'arret : fermez toujours Lancer.bat proprement.
 
 5) Mise a jour du portable
    Depuis le dossier du projet (ou se trouve package.json) : npm run build:portable

@@ -31,8 +31,19 @@ if (!process.env.DATABASE_URL) {
   process.exit(1)
 }
 
+// Sous Windows, certains contextes SQLite acceptent mieux l'URL décodée (espaces réels au lieu de %20)
+let dbUrl = process.env.DATABASE_URL.trim()
+if (dbUrl.startsWith('file:')) {
+  try {
+    const decoded = 'file:' + decodeURIComponent(dbUrl.slice(5).replace(/^\/\//, ''))
+    if (decoded !== dbUrl) dbUrl = decoded
+  } catch (_) {}
+}
+
 const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
+const prisma = new PrismaClient({
+  datasources: { db: { url: dbUrl } },
+})
 
 async function tableExists(tableName) {
   const r = await prisma.$queryRawUnsafe(

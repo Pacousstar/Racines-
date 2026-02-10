@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getEntiteId } from '@/lib/get-entite-id'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const XLSX = require('xlsx-prototype-pollution-fixed')
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(5000, Math.max(1, Number(request.nextUrl.searchParams.get('limit')) || 1000))
   const dateDebut = request.nextUrl.searchParams.get('dateDebut')?.trim()
   const dateFin = request.nextUrl.searchParams.get('dateFin')?.trim()
-  const where: { date?: { gte: Date; lte: Date }; statut?: string } = {}
+  const where: { date?: { gte: Date; lte: Date }; statut?: string; entiteId?: number } = {}
   if (dateDebut && dateFin) {
     where.date = {
       gte: new Date(dateDebut + 'T00:00:00'),
@@ -19,6 +20,9 @@ export async function GET(request: NextRequest) {
     }
   }
   where.statut = 'VALIDEE'
+  if (session.role !== 'SUPER_ADMIN') {
+    where.entiteId = await getEntiteId(session)
+  }
 
   const ventes = await prisma.vente.findMany({
     where,

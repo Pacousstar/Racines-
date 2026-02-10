@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
       whereMouvements.entiteId = entiteId
     }
 
-    // CA par période (groupé par jour ou mois selon la période)
+    // CA par période (groupé par jour ou mois). Limite pour éviter lenteur (base volumineuse).
+    const maxRows = 5000
     const ventes = await prisma.vente.findMany({
       where: whereVentes,
       select: {
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
         montantTotal: true,
       },
       orderBy: { date: 'asc' },
+      take: maxRows,
     })
 
     // Achats par période
@@ -63,6 +65,7 @@ export async function GET(request: NextRequest) {
         montantTotal: true,
       },
       orderBy: { date: 'asc' },
+      take: maxRows,
     })
 
     // Top produits (par quantité vendue)
@@ -114,6 +117,7 @@ export async function GET(request: NextRequest) {
         quantite: true,
       },
       orderBy: { date: 'asc' },
+      take: maxRows,
     })
 
     // Grouper les données par jour ou mois

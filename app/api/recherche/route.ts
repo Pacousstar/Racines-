@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getEntiteId } from '@/lib/get-entite-id'
 
 const LIMIT = 10
 const PRODUITS_LIMIT = 100 // Limite plus élevée pour les produits
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ produits: [], clients: [], fournisseurs: [], ventes: [] })
   }
 
-  const queries: Promise<any>[] = []
+  const entiteIdFilter = session.role !== 'SUPER_ADMIN' ? await getEntiteId(session) : null
+  const queries: Promise<unknown>[] = []
 
   if (typeFilter === 'all' || typeFilter === 'produits') {
     queries.push(
@@ -80,9 +82,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (typeFilter === 'all' || typeFilter === 'ventes') {
+    const whereVentes: { numero: { contains: string }; entiteId?: number } = { numero: { contains: q } }
+    if (entiteIdFilter != null) whereVentes.entiteId = entiteIdFilter
     queries.push(
       prisma.vente.findMany({
-        where: { numero: { contains: q } },
+        where: whereVentes,
         orderBy: { date: 'desc' },
         take: LIMIT,
         select: {

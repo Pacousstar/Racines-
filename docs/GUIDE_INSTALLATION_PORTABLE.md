@@ -129,9 +129,9 @@ GestiCom Portable est une version autonome de l'application qui peut être copi�
 ### Où sont stockées les données ?
 
 - **Chemin normal** (sans espaces) : `GestiCom-Portable/data/gesticom.db`
-- **Chemin avec espaces** : `C:\gesticom_portable_data\gesticom.db`
-  - Le launcher copie automatiquement la base vers C:\ si le chemin contient des espaces
-  - Les données sont resynchronisées à l'arrêt
+- **Chemin avec espaces** (ex. « CA ENTREPRISE », clé USB) : `%LOCALAPPDATA%\GestiComPortable\gesticom.db` (ex. `C:\Users\VotreNom\AppData\Local\GestiComPortable\gesticom.db`)
+  - Le launcher copie automatiquement la base vers ce dossier utilisateur (pas de droits admin sur C:\ requis)
+  - Les données sont resynchronisées vers `data/` à l’arrêt (fermez Lancer.bat proprement)
 
 ### Sauvegarde des données
 

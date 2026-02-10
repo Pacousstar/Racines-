@@ -45,10 +45,11 @@ next-env.d.ts
 prisma/prisma/
 *.db-journal
 
-# Backups
+# Backups et bases dans docs (éviter de versionner des .db lourds)
 backup-*.db
 gesticom-backup-*.db
 prisma/*.backup-*.db
+docs/*.db
 backups/
 
 # IDE

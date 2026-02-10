@@ -165,7 +165,7 @@ export default function PlanComptesPage() {
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
           >
             <Filter className="h-4 w-4" />
             Filtres
@@ -175,7 +175,7 @@ export default function PlanComptesPage() {
         {showFilters && (
           <div className="mt-4 grid grid-cols-1 gap-4 border-t pt-4 md:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Classe</label>
+              <label className="block text-xs font-medium text-gray-800 mb-1">Classe</label>
               <select
                 value={filtreClasse}
                 onChange={(e) => setFiltreClasse(e.target.value)}
@@ -188,7 +188,7 @@ export default function PlanComptesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+              <label className="block text-xs font-medium text-gray-800 mb-1">Type</label>
               <select
                 value={filtreType}
                 onChange={(e) => setFiltreType(e.target.value)}

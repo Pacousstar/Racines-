@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getEntiteId } from '@/lib/get-entite-id'
 
 export async function GET(
   _request: NextRequest,
@@ -26,5 +27,13 @@ export async function GET(
   })
 
   if (!vente) return NextResponse.json({ error: 'Vente introuvable.' }, { status: 404 })
+
+  if (session.role !== 'SUPER_ADMIN') {
+    const entiteId = await getEntiteId(session)
+    if (vente.entiteId !== entiteId) {
+      return NextResponse.json({ error: 'Non autorisé.' }, { status: 403 })
+    }
+  }
+
   return NextResponse.json(vente)
 }

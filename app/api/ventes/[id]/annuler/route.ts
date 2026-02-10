@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getEntiteId } from '@/lib/get-entite-id'
 
 export async function POST(
   _request: NextRequest,
@@ -20,6 +21,12 @@ export async function POST(
       include: { lignes: true },
     })
     if (!v) return NextResponse.json({ error: 'Vente introuvable.' }, { status: 404 })
+    if (session.role !== 'SUPER_ADMIN') {
+      const entiteId = await getEntiteId(session)
+      if (v.entiteId !== entiteId) {
+        return NextResponse.json({ error: 'Non autorisé.' }, { status: 403 })
+      }
+    }
     if (v.statut === 'ANNULEE') {
       return NextResponse.json({ error: 'Cette vente est déjà annulée.' }, { status: 400 })
     }

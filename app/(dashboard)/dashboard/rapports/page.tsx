@@ -225,7 +225,7 @@ export default function RapportsPage() {
           </div>
           <button
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
+            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
           >
             <Filter className="h-4 w-4" />
             Filtres avancés
@@ -249,7 +249,7 @@ export default function RapportsPage() {
         {showAdvancedFilters && (
           <div className="mt-4 grid gap-4 border-t pt-4 md:grid-cols-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Magasin</label>
+              <label className="block text-xs font-medium text-gray-800 mb-1">Magasin</label>
               <select
                 value={filtreMagasin}
                 onChange={(e) => setFiltreMagasin(e.target.value)}
@@ -264,7 +264,7 @@ export default function RapportsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Produit</label>
+              <label className="block text-xs font-medium text-gray-800 mb-1">Produit</label>
               <select
                 value={filtreProduit}
                 onChange={(e) => setFiltreProduit(e.target.value)}
@@ -279,7 +279,7 @@ export default function RapportsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Catégorie</label>
+              <label className="block text-xs font-medium text-gray-800 mb-1">Catégorie</label>
               <input
                 type="text"
                 value={filtreCategorie}
@@ -294,7 +294,7 @@ export default function RapportsPage() {
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
         <div>
-          <label className="block text-xs font-medium text-gray-500">Du</label>
+          <label className="block text-xs font-medium text-gray-800">Du</label>
           <input
             type="date"
             value={dateDebut}
@@ -303,7 +303,7 @@ export default function RapportsPage() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500">Au</label>
+          <label className="block text-xs font-medium text-gray-800">Au</label>
           <input
             type="date"
             value={dateFin}

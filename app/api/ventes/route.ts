@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         numero: num,
         date: dateVente,
         magasinId,
-        entiteId: session.entiteId,
+        entiteId,
         utilisateurId: session.userId,
         clientId,
         clientLibre,

@@ -56,7 +56,8 @@ export function replaceTemplateVariables(template: string, data: TemplateData): 
 }
 
 /**
- * Générer le HTML des lignes de produits
+ * Génère le HTML du tableau de toutes les lignes (articles) pour une facture/ticket.
+ * Tous les articles achetés par le client sont affichés sur une même facture.
  */
 export function generateLignesHTML(lignes: Array<{
   designation: string
@@ -64,8 +65,11 @@ export function generateLignesHTML(lignes: Array<{
   prixUnitaire: number
   montant: number
 }>): string {
+  if (!lignes?.length) {
+    return '<p style="margin: 12px 0; font-size: 12px; color: #6b7280;">Aucune ligne.</p>'
+  }
   return `
-    <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+    <table class="print-lignes" style="width: 100%; border-collapse: collapse; margin: 15px 0;">
       <thead>
         <tr style="background-color: #f3f4f6; border-bottom: 2px solid #e5e7eb;">
           <th style="padding: 8px; text-align: left; font-size: 12px; font-weight: bold;">Produit</th>
@@ -75,9 +79,9 @@ export function generateLignesHTML(lignes: Array<{
         </tr>
       </thead>
       <tbody>
-        ${lignes.map((l, i) => `
+        ${lignes.map((l) => `
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 8px; font-size: 12px;">${l.designation}</td>
+            <td style="padding: 8px; font-size: 12px;">${escapeHtml(l.designation)}</td>
             <td style="padding: 8px; text-align: center; font-size: 12px;">${l.quantite}</td>
             <td style="padding: 8px; text-align: right; font-size: 12px;">${l.prixUnitaire.toLocaleString('fr-FR')} F</td>
             <td style="padding: 8px; text-align: right; font-size: 12px; font-weight: bold;">${l.montant.toLocaleString('fr-FR')} F</td>
@@ -86,6 +90,15 @@ export function generateLignesHTML(lignes: Array<{
       </tbody>
     </table>
   `
+}
+
+function escapeHtml(s: string): string {
+  if (s == null) return ''
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 /**
@@ -186,6 +199,7 @@ export function getPrintStyles(): string {
     .print-document table td:nth-child(3),
     .print-document table td:nth-child(4) { text-align: right; }
     .print-document table tbody tr:last-child td { border-bottom: none; }
+    .print-document table.print-lignes tbody tr { page-break-inside: avoid; }
     .print-document .print-totals {
       margin-top: 16px;
       padding: 12px 0;
@@ -229,8 +243,8 @@ export function getPrintStyles(): string {
       }
       .print-document * { color-adjust: exact; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       @page {
-        size: 80mm auto;
-        margin: 8mm;
+        size: A4;
+        margin: 12mm;
       }
     }
   `
