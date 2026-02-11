@@ -74,6 +74,9 @@ export async function DELETE(
 ) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (session.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Seul le Super Administrateur peut supprimer définitivement un client.' }, { status: 403 })
+  }
 
   const id = Number((await params).id)
   if (!Number.isInteger(id) || id < 1) {
@@ -81,15 +84,11 @@ export async function DELETE(
   }
 
   try {
-    await clientRepo.update({ where: { id }, data: { actif: false } })
+    await prisma.vente.updateMany({ where: { clientId: id }, data: { clientId: null } })
+    await clientRepo.delete({ where: { id } })
     return NextResponse.json({ ok: true })
-  } catch {
-    try {
-      await clientRepo.delete({ where: { id } })
-      return NextResponse.json({ ok: true })
-    } catch (e) {
-      console.error('DELETE /api/clients/[id]:', e)
-      return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
-    }
+  } catch (e) {
+    console.error('DELETE /api/clients/[id]:', e)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
   }
 }

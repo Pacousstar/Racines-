@@ -186,7 +186,7 @@ function LoginForm() {
           <p className="text-orange-700 mt-4 font-semibold text-lg">
             Connexion sécurisée
           </p>
-          <p className="text-gray-500 text-sm mt-2">Accédez à votre espace de travail</p>
+          <p className="text-sm mt-2 font-semibold text-[#0D6B0D]">Accédez à votre espace de travail</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

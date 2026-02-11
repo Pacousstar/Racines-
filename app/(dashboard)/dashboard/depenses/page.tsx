@@ -5,6 +5,7 @@ import { DollarSign, Plus, Loader2, Trash2, Edit2, Search, Filter, X, FileSpread
 import { useToast } from '@/hooks/useToast'
 import { depenseSchema } from '@/lib/validations'
 import { validateForm, formatApiError } from '@/lib/validation-helpers'
+import { MESSAGES } from '@/lib/messages'
 import { addToSyncQueue, isOnline } from '@/lib/offline-sync'
 
 type Magasin = { id: number; code: string; nom: string }
@@ -98,6 +99,7 @@ export default function DepensesPage() {
   const [dateDebut, setDateDebut] = useState('')
   const [dateFin, setDateFin] = useState('')
   const [filtreCategorie, setFiltreCategorie] = useState('')
+  const [userRole, setUserRole] = useState<string>('')
   const [filtreMagasin, setFiltreMagasin] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -126,6 +128,10 @@ export default function DepensesPage() {
   useEffect(() => {
     fetchDepenses()
   }, [dateDebut, dateFin, filtreCategorie, filtreMagasin, searchTerm])
+
+  useEffect(() => {
+    fetch('/api/auth/check').then((r) => r.ok && r.json()).then((d) => d && setUserRole(d.role)).catch(() => {})
+  }, [])
 
   const resetForm = () => {
     setFormData({
@@ -203,7 +209,7 @@ export default function DepensesPage() {
       if (res.ok) {
         resetForm()
         fetchDepenses()
-        showSuccess(editing ? 'Dépense modifiée avec succès.' : 'Dépense créée avec succès.')
+        showSuccess(editing ? MESSAGES.DEPENSE_MODIFIEE : MESSAGES.DEPENSE_ENREGISTREE)
       } else {
         const errorMsg = formatApiError(data.error || 'Erreur lors de l\'enregistrement.')
         setErr(data.hint ? `${errorMsg}\n\n${data.hint}` : errorMsg)
@@ -241,10 +247,10 @@ export default function DepensesPage() {
       const res = await fetch(`/api/depenses/${id}`, { method: 'DELETE' })
       if (res.ok) {
         fetchDepenses()
-        showSuccess('Dépense supprimée avec succès.')
+        showSuccess(MESSAGES.DEPENSE_SUPPRIMEE)
       } else {
         const data = await res.json()
-        showError(formatApiError(data.error || 'Erreur lors de la suppression.'))
+        showError(res.status === 403 ? (data.error || MESSAGES.RESERVE_SUPER_ADMIN) : formatApiError(data.error || 'Erreur lors de la suppression.'))
       }
     } catch (e) {
       showError(formatApiError(e))
@@ -482,13 +488,15 @@ export default function DepensesPage() {
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(d.id)}
-                          className="rounded-lg p-1 text-red-600 hover:bg-red-50"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {userRole === 'SUPER_ADMIN' && (
+                          <button
+                            onClick={() => handleDelete(d.id)}
+                            className="rounded-lg p-1 text-red-600 hover:bg-red-50"
+                            title="Supprimer (Super Admin)"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -54,6 +54,9 @@ export async function DELETE(
 ) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (session.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Seul le Super Administrateur peut supprimer définitivement un fournisseur.' }, { status: 403 })
+  }
 
   const id = Number((await params).id)
   if (!Number.isInteger(id) || id < 1) {
@@ -61,7 +64,8 @@ export async function DELETE(
   }
 
   try {
-    await prisma.fournisseur.update({ where: { id }, data: { actif: false } })
+    await prisma.achat.updateMany({ where: { fournisseurId: id }, data: { fournisseurId: null } })
+    await prisma.fournisseur.delete({ where: { id } })
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('DELETE /api/fournisseurs/[id]:', e)

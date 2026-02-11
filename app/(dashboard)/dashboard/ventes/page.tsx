@@ -6,6 +6,7 @@ import { ShoppingCart, Plus, Loader2, Trash2, XCircle, Eye, FileSpreadsheet, Pri
 import { printDocument, generateLignesHTML, type TemplateData } from '@/lib/print-templates'
 import { useToast } from '@/hooks/useToast'
 import { formatApiError } from '@/lib/validation-helpers'
+import { MESSAGES } from '@/lib/messages'
 import Pagination from '@/components/ui/Pagination'
 import { addToSyncQueue, isOnline } from '@/lib/offline-sync'
 
@@ -33,6 +34,8 @@ export default function VentesPage() {
     lignes: Array<{ quantite: number; prixUnitaire: number; designation: string }>
   }>>([])
   const [annulant, setAnnulant] = useState<number | null>(null)
+  const [supprimant, setSupprimant] = useState<number | null>(null)
+  const [userRole, setUserRole] = useState<string>('')
   const [detailVente, setDetailVente] = useState<{
     id: number
     numero: string
@@ -93,7 +96,11 @@ export default function VentesPage() {
 
   // Récupérer le templateId par défaut pour VENTE
   const [defaultTemplateId, setDefaultTemplateId] = useState<number | null>(null)
-  
+
+  useEffect(() => {
+    fetch('/api/auth/check').then((r) => r.ok && r.json()).then((d) => d && setUserRole(d.role)).catch(() => {})
+  }, [])
+
   useEffect(() => {
     fetch('/api/print-templates?type=VENTE&actif=true')
       .then((r) => (r.ok ? r.json() : []))
@@ -352,7 +359,7 @@ export default function VentesPage() {
           lignes: [],
         })
         setCurrentPage(1)
-        showSuccess('Vente enregistrée avec succès.')
+        showSuccess(MESSAGES.VENTE_ENREGISTREE)
         fetchVentes(undefined, undefined, 1)
       } else {
         if (data.error?.includes('Client introuvable')) {
@@ -491,15 +498,36 @@ export default function VentesPage() {
       const res = await fetch(`/api/ventes/${v.id}/annuler`, { method: 'POST' })
       if (res.ok) {
         setVentes((list) => list.map((x) => (x.id === v.id ? { ...x, statut: 'ANNULEE' } : x)))
-        showSuccess('Vente annulée avec succès.')
+        showSuccess(MESSAGES.VENTE_ANNULEE)
       } else {
         const d = await res.json()
-        showError(formatApiError(d.error || 'Erreur lors de l\'annulation.'))
+        showError(res.status === 403 ? (d.error || MESSAGES.RESERVE_SUPER_ADMIN) : formatApiError(d.error || 'Erreur lors de l\'annulation.'))
       }
     } catch (e) {
       showError(formatApiError(e))
     } finally {
       setAnnulant(null)
+    }
+  }
+
+  const handleSupprimer = async (v: { id: number; numero: string }) => {
+    if (!confirm(`Supprimer définitivement la vente ${v.numero} ? Stock et comptabilité seront mis à jour. Cette action est irréversible.`)) return
+    setSupprimant(v.id)
+    setErr('')
+    try {
+      const res = await fetch(`/api/ventes/${v.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setVentes((list) => list.filter((x) => x.id !== v.id))
+        if (detailVente?.id === v.id) setDetailVente(null)
+        showSuccess(MESSAGES.VENTE_SUPPRIMEE)
+      } else {
+        const d = await res.json()
+        showError(res.status === 403 ? (d.error || MESSAGES.RESERVE_SUPER_ADMIN) : formatApiError(d.error || 'Erreur lors de la suppression.'))
+      }
+    } catch (e) {
+      showError(formatApiError(e))
+    } finally {
+      setSupprimant(null)
     }
   }
 
@@ -993,6 +1021,16 @@ export default function VentesPage() {
                             title="Annuler la vente"
                           >
                             <XCircle className="h-4 w-4" />
+                          </button>
+                        )}
+                        {userRole === 'SUPER_ADMIN' && (
+                          <button
+                            onClick={() => handleSupprimer(v)}
+                            disabled={supprimant === v.id}
+                            className="rounded p-1.5 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                            title="Supprimer définitivement (stock et comptabilité mis à jour)"
+                          >
+                            {supprimant === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                           </button>
                         )}
                       </div>

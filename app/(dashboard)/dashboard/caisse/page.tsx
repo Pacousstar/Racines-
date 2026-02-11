@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Wallet, Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Filter, X, Search, FileSpreadsheet, Download } from 'lucide-react'
+import { Wallet, Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Filter, X, Search, FileSpreadsheet, Download, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatApiError } from '@/lib/validation-helpers'
+import { MESSAGES } from '@/lib/messages'
 import { addToSyncQueue, isOnline } from '@/lib/offline-sync'
 
 type Magasin = { id: number; code: string; nom: string }
@@ -38,6 +39,12 @@ export default function CaissePage() {
   const [filtreType, setFiltreType] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [userRole, setUserRole] = useState<string>('')
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/check').then((r) => r.ok && r.json()).then((d) => d && setUserRole(d.role)).catch(() => {})
+  }, [])
 
   const fetchOperations = () => {
     setLoading(true)
@@ -124,7 +131,7 @@ export default function CaissePage() {
       if (res.ok) {
         setFormOpen(false)
         fetchOperations()
-        showSuccess(formType === 'ENTREE' ? 'Entrée enregistrée avec succès.' : 'Sortie enregistrée avec succès.')
+        showSuccess(MESSAGES.CAISSE_ENREGISTREE)
       } else {
         const errorMsg = formatApiError(data.error || 'Erreur lors de l\'enregistrement.')
         setErr(errorMsg)
@@ -320,6 +327,7 @@ export default function CaissePage() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Motif</th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Montant</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Utilisateur</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -356,6 +364,36 @@ export default function CaissePage() {
                       {o.type === 'ENTREE' ? '+' : '−'} {o.montant.toLocaleString('fr-FR')} FCFA
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{o.utilisateur.nom}</td>
+                    <td className="px-4 py-3">
+                      {userRole === 'SUPER_ADMIN' && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm('Supprimer cette opération caisse ? Comptabilité mise à jour. Irréversible.')) return
+                            setDeletingId(o.id)
+                            try {
+                              const res = await fetch(`/api/caisse/${o.id}`, { method: 'DELETE' })
+                              if (res.ok) {
+                                fetchOperations()
+                                showSuccess(MESSAGES.CAISSE_SUPPRIMEE)
+                              } else {
+                                const d = await res.json()
+                                showError(res.status === 403 ? (d.error || MESSAGES.RESERVE_SUPER_ADMIN) : (d.error || 'Erreur suppression.'))
+                              }
+                            } catch (e) {
+                              showError(formatApiError(e))
+                            } finally {
+                              setDeletingId(null)
+                            }
+                          }}
+                          disabled={deletingId === o.id}
+                          className="rounded p-1.5 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                          title="Supprimer (Super Admin)"
+                        >
+                          {deletingId === o.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

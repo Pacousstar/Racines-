@@ -202,14 +202,16 @@ export default function UtilisateursPage() {
 
     setSaving(true)
     try {
-      // Si des rôles supplémentaires sont cochés, fusionner les permissions (rôle principal + rôles en plus)
+      // Priorité 1 : si "Utiliser des permissions personnalisées" est coché, on envoie la liste cochée (sinon les ajouts ne sont pas pris en compte)
+      // Priorité 2 : si "Droits supplémentaires" (rôles en plus) sans permissions personnalisées, on envoie la fusion rôle + supplémentaires
+      // Sinon : null = uniquement les permissions du rôle
       let permissionsPersonnalisees: Permission[] | null = null
-      if (editRolesSupplementaires.length > 0) {
+      if (editForm.useCustomPermissions) {
+        permissionsPersonnalisees = editForm.permissionsPersonnalisees
+      } else if (editRolesSupplementaires.length > 0) {
         const base = ROLE_PERMISSIONS[editForm.role] || []
         const supplementaires = editRolesSupplementaires.flatMap((r) => ROLE_PERMISSIONS[r] || [])
         permissionsPersonnalisees = [...new Set([...base, ...supplementaires])]
-      } else if (editForm.useCustomPermissions) {
-        permissionsPersonnalisees = editForm.permissionsPersonnalisees
       }
 
       const updateData: any = {

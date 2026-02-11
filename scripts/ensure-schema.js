@@ -13,7 +13,14 @@ const { execSync } = require('child_process')
 const base = path.basename(__dirname) === 'scripts' ? path.join(__dirname, '..') : __dirname
 const envPath = path.join(base, '.env')
 const urlPath = path.join(base, '.database_url')
-if (fs.existsSync(urlPath)) {
+// Même source d'URL que le launcher / run-standalone : env (launcher) > LOCALAPPDATA > .database_url > .env
+if (!process.env.DATABASE_URL && process.platform === 'win32' && process.env.LOCALAPPDATA) {
+  try {
+    const fixed = path.join(process.env.LOCALAPPDATA, 'GestiComPortable', 'database_url.txt')
+    if (fs.existsSync(fixed)) process.env.DATABASE_URL = fs.readFileSync(fixed, 'utf8').trim()
+  } catch (_) {}
+}
+if (!process.env.DATABASE_URL && fs.existsSync(urlPath)) {
   try {
     process.env.DATABASE_URL = fs.readFileSync(urlPath, 'utf8').trim()
   } catch (_) {}

@@ -5,6 +5,7 @@ import { TrendingUp, Plus, Loader2, Trash2, Edit2, Filter, X, Search, FileSpread
 import { useToast } from '@/hooks/useToast'
 import { chargeSchema } from '@/lib/validations'
 import { validateForm, formatApiError } from '@/lib/validation-helpers'
+import { MESSAGES } from '@/lib/messages'
 import { addToSyncQueue, isOnline } from '@/lib/offline-sync'
 
 type Charge = {
@@ -87,6 +88,11 @@ export default function ChargesPage() {
   const [filtreMagasin, setFiltreMagasin] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [userRole, setUserRole] = useState<string>('')
+
+  useEffect(() => {
+    fetch('/api/auth/check').then((r) => r.ok && r.json()).then((d) => d && setUserRole(d.role)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetch('/api/magasins')
@@ -209,7 +215,7 @@ export default function ChargesPage() {
       if (res.ok) {
         resetForm()
         fetchCharges()
-        showSuccess(editing ? 'Charge modifiée avec succès.' : 'Charge créée avec succès.')
+        showSuccess(editing ? MESSAGES.CHARGE_MODIFIEE : MESSAGES.CHARGE_ENREGISTREE)
       } else {
         const errorMsg = formatApiError(data.error || 'Erreur lors de l\'enregistrement.')
         setErr(errorMsg)
@@ -230,10 +236,10 @@ export default function ChargesPage() {
       const res = await fetch(`/api/charges/${id}`, { method: 'DELETE' })
       if (res.ok) {
         fetchCharges()
-        showSuccess('Charge supprimée avec succès.')
+        showSuccess(MESSAGES.CHARGE_SUPPRIMEE)
       } else {
         const d = await res.json()
-        showError(formatApiError(d.error || 'Erreur lors de la suppression.'))
+        showError(res.status === 403 ? (d.error || MESSAGES.RESERVE_SUPER_ADMIN) : formatApiError(d.error || 'Erreur lors de la suppression.'))
       }
     } catch (e) {
       showError(formatApiError(e))
@@ -469,14 +475,16 @@ export default function ChargesPage() {
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(c.id)}
-                          className="rounded-lg p-1 text-red-600 hover:bg-red-50"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {userRole === 'SUPER_ADMIN' && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(c.id)}
+                            className="rounded-lg p-1 text-red-600 hover:bg-red-50"
+                            title="Supprimer (Super Admin)"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

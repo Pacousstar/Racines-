@@ -389,7 +389,8 @@ export default function ParametresPage() {
     return (
       <div className="mx-auto max-w-2xl rounded-xl border border-amber-200 bg-amber-50 p-8 text-center">
         <h1 className="text-lg font-semibold text-amber-800">Droits insuffisants</h1>
-        <p className="mt-2 text-sm text-amber-700">Vous n&apos;avez pas les droits pour accéder aux paramètres.</p>
+        <p className="mt-2 text-sm text-amber-700">Cette section est réservée au Super Administrateur ou à l&apos;administrateur.</p>
+        <p className="mt-1 text-xs text-amber-600">Vous n&apos;avez pas les droits pour accéder aux paramètres.</p>
       </div>
     )
   }

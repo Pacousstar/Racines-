@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { deleteEcrituresByReference } from '@/lib/delete-ecritures'
 
 export async function GET(
   _request: NextRequest,
@@ -114,6 +115,9 @@ export async function DELETE(
 ) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (session.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Seul le Super Administrateur peut supprimer une dépense.' }, { status: 403 })
+  }
 
   try {
     const id = Number((await params).id)
@@ -121,6 +125,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Id invalide.' }, { status: 400 })
     }
 
+    await deleteEcrituresByReference('DEPENSE', id)
     await prisma.depense.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (e) {

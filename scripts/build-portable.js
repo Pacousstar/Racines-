@@ -65,6 +65,18 @@ if (fs.existsSync(nextLock)) {
   } catch (_) {}
 }
 
+// Supprimer .next/standalone avant le build pour éviter ENOTEMPTY (Next tente un rmdir sur un dossier non vide sous Windows)
+const standaloneDir = path.join(projectRoot, '.next', 'standalone')
+if (fs.existsSync(standaloneDir)) {
+  try {
+    fs.rmSync(standaloneDir, { recursive: true, force: true, maxRetries: 3 })
+    console.log('Dossier .next/standalone supprime (rebuild propre pour eviter ENOTEMPTY).')
+  } catch (e) {
+    console.warn('Impossible de supprimer .next/standalone:', e.message)
+    console.warn('Fermez Cursor/IDE et tout processus utilisant ce dossier, puis relancez npm run build:portable.')
+  }
+}
+
 console.log('Build GestiCom (prisma + next)...')
 execSync('npm run build', { cwd: projectRoot, stdio: 'inherit' })
 

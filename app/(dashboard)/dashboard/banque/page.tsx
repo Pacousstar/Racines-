@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Building2, Plus, Loader2, ArrowDownCircle, ArrowUpCircle, Filter, X, Edit2, Trash2, Search, FileSpreadsheet, Download } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatApiError } from '@/lib/validation-helpers'
+import { MESSAGES } from '@/lib/messages'
 import { addToSyncQueue, isOnline } from '@/lib/offline-sync'
 
 type Banque = {
@@ -83,6 +84,12 @@ export default function BanquePage() {
   const [filtreType, setFiltreType] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [userRole, setUserRole] = useState<string>('')
+  const [deletingOpId, setDeletingOpId] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/check').then((r) => r.ok && r.json()).then((d) => d && setUserRole(d.role)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetchBanques()
@@ -236,7 +243,7 @@ export default function BanquePage() {
       if (res.ok) {
         resetFormBanque()
         fetchBanques()
-        showSuccess(editingBanque ? 'Banque modifiée avec succès.' : 'Banque créée avec succès.')
+        showSuccess(editingBanque ? MESSAGES.BANQUE_MODIFIEE : MESSAGES.BANQUE_ENREGISTREE)
       } else {
         const errorMsg = formatApiError(data.error || 'Erreur lors de l\'enregistrement.')
         setErr(errorMsg)
@@ -304,7 +311,7 @@ export default function BanquePage() {
         resetFormOperation()
         fetchOperations()
         fetchBanques() // Mettre à jour les soldes
-        showSuccess('Opération enregistrée avec succès.')
+        showSuccess(MESSAGES.OPERATION_BANQUE_ENREGISTREE)
       } else {
         const errorMsg = formatApiError(data.error || 'Erreur lors de l\'enregistrement.')
         setErr(errorMsg)
@@ -338,7 +345,7 @@ export default function BanquePage() {
       if (res.ok) {
         fetchBanques()
         if (selectedBanque === id) setSelectedBanque('')
-        showSuccess('Compte bancaire supprimé avec succès.')
+        showSuccess(MESSAGES.BANQUE_SUPPRIMEE)
       } else {
         const data = await res.json()
         showError(formatApiError(data.error || 'Erreur lors de la suppression.'))
@@ -577,16 +584,18 @@ export default function BanquePage() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteBanque(banque.id)
-                      }}
-                      className="p-1 text-red-600 hover:bg-red-50 rounded"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {userRole === 'SUPER_ADMIN' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteBanque(banque.id)
+                        }}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        title="Supprimer (Super Admin)"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="mt-2 pt-2 border-t border-gray-200">
@@ -704,6 +713,7 @@ export default function BanquePage() {
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Bénéficiaire</th>
                       <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Montant</th>
                       <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Solde après</th>
+                      {userRole === 'SUPER_ADMIN' && <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 w-20">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -747,6 +757,37 @@ export default function BanquePage() {
                             <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-gray-900">
                               {op.soldeApres.toLocaleString('fr-FR')} FCFA
                             </td>
+                            {userRole === 'SUPER_ADMIN' && (
+                              <td className="px-4 py-3">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!confirm('Supprimer cette opération bancaire ? Comptabilité et solde seront mis à jour. Irréversible.')) return
+                                    setDeletingOpId(op.id)
+                                    try {
+                                      const res = await fetch(`/api/banques/operations/${op.id}`, { method: 'DELETE' })
+                                      if (res.ok) {
+                                        fetchOperations()
+                                        fetchBanques()
+                                        showSuccess(MESSAGES.OPERATION_BANQUE_SUPPRIMEE)
+                                      } else {
+                                        const d = await res.json()
+                                        showError(res.status === 403 ? (d.error || MESSAGES.RESERVE_SUPER_ADMIN) : (d.error || 'Erreur suppression.'))
+                                      }
+                                    } catch (e) {
+                                      showError(formatApiError(e))
+                                    } finally {
+                                      setDeletingOpId(null)
+                                    }
+                                  }}
+                                  disabled={deletingOpId === op.id}
+                                  className="rounded p-1.5 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                  title="Supprimer (Super Admin)"
+                                >
+                                  {deletingOpId === op.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         )
                       })}

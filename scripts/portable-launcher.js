@@ -1,8 +1,8 @@
 /**
- * Lanceur GestiCom portable. À lancer depuis GestiCom-Portable : node portable-launcher.js
- * - Si le chemin du dossier ne contient PAS d'espaces (ex. C:\GestiCom-Portable) : utilise data/gesticom.db
- *   directement, comme en développement → même comportement, enregistrements OK.
- * - Si le chemin contient des espaces (ex. Bureau "CA ENTREPRISE") : copie la base vers %LOCALAPPDATA%\GestiComPortable.
+ * Lanceur GestiCom portable — UNE SEULE LOGIQUE pour tous les PC.
+ * Sous Windows : TOUJOURS utiliser %LOCALAPPDATA%\GestiComPortable\gesticom.db.
+ * Ainsi le même dossier portable fonctionne partout (dev, prod, Bureau, C:\, clé USB) et
+ * tous les enregistrements (ventes, achats, clients, etc.) sont bien sauvegardés.
  */
 
 const path = require('path')
@@ -20,13 +20,12 @@ if (!fs.existsSync(dbPath)) {
   process.exit(1)
 }
 
-/** URL file: pour SQLite. Encode les espaces (ex. "CA ENTREPRISE" -> %20) pour éviter erreurs d'écriture. */
+/** URL file: pour SQLite. Encode les espaces en %20. */
 function toFileUrl(p) {
   const s = path.resolve(p).replace(/\\/g, '/').replace(/^([a-zA-Z]):/, '$1:')
   return 'file:' + encodeURI(s).replace(/^file%3A/, 'file:')
 }
 
-/** Dossier utilisateur sans espaces pour la base (quand le chemin du portable contient des espaces). */
 function getPortableDataDir() {
   if (process.platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || os.homedir(), 'AppData', 'Local')
@@ -35,14 +34,12 @@ function getPortableDataDir() {
   return path.join(os.homedir(), '.gesticom_portable')
 }
 
-// Même logique qu'en dev : si le chemin n'a PAS d'espaces, on utilise data/gesticom.db directement.
-// Sinon (ex. "CA ENTREPRISE"), on copie vers LOCALAPPDATA pour éviter les soucis SQLite.
-const pathHasSpaces = (base + dbPath).indexOf(' ') >= 0
+// Windows : TOUJOURS utiliser LOCALAPPDATA (un seul chemin, aucun souci d'espaces ni de droits).
 let dbUrl = toFileUrl(dbPath)
 let dbToUse = dbPath
 let useFallback = false
 
-if (process.platform === 'win32' && pathHasSpaces) {
+if (process.platform === 'win32') {
   const portableDataDir = getPortableDataDir()
   const fallback = path.join(portableDataDir, 'gesticom.db')
   const fallbackDir = path.dirname(fallback)
@@ -58,57 +55,46 @@ if (process.platform === 'win32' && pathHasSpaces) {
       dbToUse = fallback
       useFallback = true
       const sizeKo = Math.round(fs.statSync(fallback).size / 1024)
-      if (!fallbackExists) {
-        console.log('Base data/gesticom.db (' + sizeKo + ' Ko) copiee vers ' + portableDataDir + ' (chemin avec espaces).')
-      } else {
-        console.log('Base a jour : data/gesticom.db copiee vers ' + portableDataDir + ' (' + sizeKo + ' Ko).')
-      }
+      console.log('Base data/gesticom.db (' + sizeKo + ' Ko) copiee vers ' + portableDataDir + '.')
     } else {
       dbUrl = toFileUrl(fallback)
       dbToUse = fallback
       useFallback = true
       const sizeKo = Math.round(fs.statSync(fallback).size / 1024)
-      console.log('Base ' + fallback + ' (' + sizeKo + ' Ko) utilisee (session precedente).')
+      console.log('Base ' + fallback + ' (' + sizeKo + ' Ko) utilisee.')
     }
   } catch (e) {
-    console.warn('Impossible d\'utiliser le dossier utilisateur pour la base:', e.message)
+    console.warn('Impossible d\'utiliser ' + portableDataDir + ':', e.message)
   }
-} else if (process.platform === 'win32' && !pathHasSpaces) {
-  console.log('Chemin sans espaces : utilisation de data/gesticom.db (comme en developpement).')
 }
 
-// Afficher clairement où sont enregistrées les données
 console.log('')
 console.log('=== GestiCom Portable ===')
 console.log('DONNEES ENREGISTREES DANS :')
 console.log('  ' + dbToUse)
 console.log('(ventes, achats, stock, clients, fournisseurs, caisse, depenses, charges)')
-if (pathHasSpaces) {
-  console.log('')
-  console.log('>>> Recommandation : pour le meme comportement qu\'en dev, copiez ce dossier dans un chemin SANS espaces,')
-  console.log('    par ex. C:\\GestiCom-Portable ou D:\\GestiCom-Portable .')
-}
 console.log('')
 
 process.env.NODE_ENV = 'production'
 process.env.PORT = process.env.PORT || '3000'
-process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0'  // Écouter sur toutes les interfaces pour le réseau local
+process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0'
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'GestiCom-Portable-ChangeMe-InProduction-32c'
 process.env.DATABASE_URL = dbUrl
 
-fs.writeFileSync(path.join(base, '.database_url'), dbUrl, 'utf8')
-// Quand on utilise LOCALAPPDATA (chemin avec espaces), écrire l'URL dans un fichier fixe pour que le serveur la trouve
-if (process.platform === 'win32' && useFallback) {
-  const portableDataDir = getPortableDataDir()
+// Source unique d'URL : LOCALAPPDATA (le serveur lira ce fichier, pas le .env du portable).
+const portableDataDir = getPortableDataDir()
+if (process.platform === 'win32') {
   try {
     if (!fs.existsSync(portableDataDir)) fs.mkdirSync(portableDataDir, { recursive: true })
     fs.writeFileSync(path.join(portableDataDir, 'database_url.txt'), dbUrl, 'utf8')
   } catch (e) {
-    console.warn('Impossible d\'écrire database_url.txt dans ' + portableDataDir + ':', e.message)
+    console.warn('Impossible d\'écrire database_url.txt:', e.message)
   }
 }
+fs.writeFileSync(path.join(base, '.database_url'), dbUrl, 'utf8')
+
+// Ne PAS mettre DATABASE_URL dans .env : évite qu'un .env copié d'un autre PC écrase l'URL sur ce PC.
 const envContent = [
-  'DATABASE_URL="' + dbUrl.replace(/"/g, '\\"') + '"',
   'NODE_ENV=production',
   'PORT=' + process.env.PORT,
   'SESSION_SECRET="' + (process.env.SESSION_SECRET || '').replace(/"/g, '\\"') + '"',
@@ -130,11 +116,13 @@ const runStandalone = `'use strict';
 var path = require('path');
 var fs = require('fs');
 var url = null;
-var f = path.join(__dirname, '.database_url');
-if (fs.existsSync(f)) url = fs.readFileSync(f, 'utf8').trim();
-if (!url && process.platform === 'win32' && process.env.LOCALAPPDATA) {
+if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
   var fixed = path.join(process.env.LOCALAPPDATA, 'GestiComPortable', 'database_url.txt');
   if (fs.existsSync(fixed)) url = fs.readFileSync(fixed, 'utf8').trim();
+}
+if (!url) {
+  var f = path.join(__dirname, '.database_url');
+  if (fs.existsSync(f)) url = fs.readFileSync(f, 'utf8').trim();
 }
 if (url) process.env.DATABASE_URL = url;
 require(path.join(__dirname, '${serverJsRequirePath}.js'));

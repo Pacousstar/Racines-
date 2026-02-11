@@ -198,7 +198,7 @@ export default async function ComptabilitePage({
         <div>
           <h1 className="text-3xl font-bold text-white">Comptabilité</h1>
           <p className="mt-2 text-white/90">
-            Chiffres de GestiCom — CA, ventes, clients et évolution. Accès réservé.
+            Chiffres de GestiCom — CA, ventes, clients et évolution. Accès réservé au Super Administrateur et au Comptable.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

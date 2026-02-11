@@ -6,6 +6,7 @@ import { Truck, Search, Plus, Loader2, Pencil, Trash2, FileSpreadsheet, Download
 import { useToast } from '@/hooks/useToast'
 import { fournisseurSchema } from '@/lib/validations'
 import { validateForm, formatApiError } from '@/lib/validation-helpers'
+import { MESSAGES } from '@/lib/messages'
 import Pagination from '@/components/ui/Pagination'
 import { addToSyncQueue, isOnline } from '@/lib/offline-sync'
 
@@ -30,6 +31,11 @@ export default function FournisseursPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState<{ page: number; limit: number; total: number; totalPages: number } | null>(null)
   const [formData, setFormData] = useState({ nom: '', telephone: '', email: '', ncc: '' })
+  const [userRole, setUserRole] = useState<string>('')
+
+  useEffect(() => {
+    fetch('/api/auth/check').then((r) => r.ok && r.json()).then((d) => d && setUserRole(d.role)).catch(() => {})
+  }, [])
 
   const fetchList = async (page?: number) => {
     setLoading(true)
@@ -87,10 +93,10 @@ export default function FournisseursPage() {
       if (res.ok) {
         setCurrentPage(1)
         fetchList(1)
-        showSuccess('Fournisseur supprimé avec succès.')
+        showSuccess(MESSAGES.FOURNISSEUR_SUPPRIME)
       } else {
         const d = await res.json()
-        showError(formatApiError(d.error || 'Erreur lors de la suppression.'))
+        showError(res.status === 403 ? (d.error || MESSAGES.RESERVE_SUPER_ADMIN) : formatApiError(d.error || 'Erreur lors de la suppression.'))
       }
     } catch (e) {
       showError(formatApiError(e))
@@ -174,7 +180,7 @@ export default function FournisseursPage() {
           setEditing(null)
           setCurrentPage(1)
           fetchList(1)
-          showSuccess('Fournisseur modifié avec succès.')
+          showSuccess(MESSAGES.FOURNISSEUR_MODIFIE)
         } else {
           const errorMsg = formatApiError(data.error || 'Erreur lors de la modification.')
           setErr(errorMsg)
@@ -191,7 +197,7 @@ export default function FournisseursPage() {
           setForm(false)
           setCurrentPage(1)
           fetchList(1)
-          showSuccess('Fournisseur créé avec succès.')
+          showSuccess(MESSAGES.FOURNISSEUR_ENREGISTRE)
         } else {
           const errorMsg = formatApiError(data.error || 'Erreur lors de la création.')
           setErr(errorMsg)
@@ -357,13 +363,15 @@ export default function FournisseursPage() {
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(f)}
-                          className="rounded p-1.5 text-red-600 hover:bg-red-50"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {userRole === 'SUPER_ADMIN' && (
+                          <button
+                            onClick={() => handleDelete(f)}
+                            className="rounded p-1.5 text-red-600 hover:bg-red-50"
+                            title="Supprimer définitivement (Super Admin)"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

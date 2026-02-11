@@ -6,6 +6,7 @@ import { Users, Search, Plus, Loader2, Pencil, Trash2, X, FileSpreadsheet, Downl
 import { useToast } from '@/hooks/useToast'
 import { clientSchema } from '@/lib/validations'
 import { validateForm, formatApiError } from '@/lib/validation-helpers'
+import { MESSAGES } from '@/lib/messages'
 import Pagination from '@/components/ui/Pagination'
 import { addToSyncQueue, isOnline } from '@/lib/offline-sync'
 
@@ -38,6 +39,11 @@ export default function ClientsPage() {
     plafondCredit: '',
     ncc: '',
   })
+  const [userRole, setUserRole] = useState<string>('')
+
+  useEffect(() => {
+    fetch('/api/auth/check').then((r) => r.ok && r.json()).then((d) => d && setUserRole(d.role)).catch(() => {})
+  }, [])
 
   const fetchList = async (page?: number) => {
     setLoading(true)
@@ -95,10 +101,10 @@ export default function ClientsPage() {
       if (res.ok) {
         setCurrentPage(1)
         fetchList(1)
-        showSuccess('Client supprimé avec succès.')
+        showSuccess(MESSAGES.CLIENT_SUPPRIME)
       } else {
         const d = await res.json()
-        showError(formatApiError(d.error || 'Erreur lors de la suppression.'))
+        showError(res.status === 403 ? (d.error || MESSAGES.RESERVE_SUPER_ADMIN) : formatApiError(d.error || 'Erreur lors de la suppression.'))
       }
     } catch (e) {
       showError(formatApiError(e))
@@ -188,7 +194,7 @@ export default function ClientsPage() {
           setEditing(null)
           setCurrentPage(1)
           fetchList(1)
-          showSuccess('Client modifié avec succès.')
+          showSuccess(MESSAGES.CLIENT_MODIFIE)
         } else {
           const errorMsg = formatApiError(data.error || 'Erreur lors de la modification.')
           setErr(errorMsg)
@@ -205,7 +211,7 @@ export default function ClientsPage() {
           setForm(false)
           setCurrentPage(1)
           fetchList(1)
-          showSuccess('Client créé avec succès.')
+          showSuccess(MESSAGES.CLIENT_ENREGISTRE)
         } else {
           const errorMsg = formatApiError(data.error || 'Erreur lors de la création.')
           setErr(errorMsg)
@@ -399,13 +405,15 @@ export default function ClientsPage() {
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(c)}
-                          className="rounded p-1.5 text-red-600 hover:bg-red-50"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {userRole === 'SUPER_ADMIN' && (
+                          <button
+                            onClick={() => handleDelete(c)}
+                            className="rounded p-1.5 text-red-600 hover:bg-red-50"
+                            title="Supprimer définitivement (Super Admin)"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

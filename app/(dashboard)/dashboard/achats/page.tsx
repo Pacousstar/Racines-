@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ShoppingBag, Plus, Loader2, Trash2, Eye, FileSpreadsheet, Printer, X, Search } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatApiError } from '@/lib/validation-helpers'
+import { MESSAGES } from '@/lib/messages'
 import { fournisseurSchema } from '@/lib/validations'
 import { validateForm } from '@/lib/validation-helpers'
 import Pagination from '@/components/ui/Pagination'
@@ -72,6 +73,12 @@ export default function AchatsPage() {
     email: '',
   })
   const [savingFournisseur, setSavingFournisseur] = useState(false)
+  const [userRole, setUserRole] = useState<string>('')
+  const [supprimant, setSupprimant] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/check').then((r) => r.ok && r.json()).then((d) => d && setUserRole(d.role)).catch(() => {})
+  }, [])
 
   const refetchProduits = () => {
     fetch('/api/produits?complet=1')
@@ -345,7 +352,7 @@ export default function AchatsPage() {
           lignes: [],
         })
         setAchats((a) => [data, ...a])
-        showSuccess('Achat enregistré avec succès.')
+        showSuccess(MESSAGES.ACHAT_ENREGISTRE)
       } else {
         const errorMsg = formatApiError(data.error || 'Erreur lors de l\'enregistrement.')
         setErr(errorMsg)
@@ -734,14 +741,44 @@ export default function AchatsPage() {
                       {(Number(a.montantTotal) - (Number(a.montantPaye) || 0)).toLocaleString('fr-FR')} F
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleVoirDetail(a.id)}
-                        disabled={loadingDetail === a.id}
-                        className="rounded p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
-                        title="Voir le détail"
-                      >
-                        {loadingDetail === a.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleVoirDetail(a.id)}
+                          disabled={loadingDetail === a.id}
+                          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                          title="Voir le détail"
+                        >
+                          {loadingDetail === a.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                        {userRole === 'SUPER_ADMIN' && (
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Supprimer définitivement l'achat ${a.numero} ? Stock et comptabilité seront mis à jour. Irréversible.`)) return
+                              setSupprimant(a.id)
+                              try {
+                                const res = await fetch(`/api/achats/${a.id}`, { method: 'DELETE' })
+                                if (res.ok) {
+                                  setAchats((list) => list.filter((x) => x.id !== a.id))
+                                  if (detailAchat?.id === a.id) setDetailAchat(null)
+                                  showSuccess(MESSAGES.ACHAT_SUPPRIME)
+                                } else {
+                                  const d = await res.json()
+                                  showError(res.status === 403 ? (d.error || MESSAGES.RESERVE_SUPER_ADMIN) : formatApiError(d.error || 'Erreur suppression.'))
+                                }
+                              } catch (e) {
+                                showError(formatApiError(e))
+                              } finally {
+                                setSupprimant(null)
+                              }
+                            }}
+                            disabled={supprimant === a.id}
+                            className="rounded p-1.5 text-red-700 hover:bg-red-100 disabled:opacity-50"
+                            title="Supprimer définitivement"
+                          >
+                            {supprimant === a.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

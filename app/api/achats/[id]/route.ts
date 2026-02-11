@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getEntiteId } from '@/lib/get-entite-id'
+import { deleteEcrituresByReference } from '@/lib/delete-ecritures'
 
 export async function GET(
   _request: NextRequest,
@@ -36,4 +37,61 @@ export async function GET(
   }
 
   return NextResponse.json(achat)
+}
+
+/** Suppression définitive (Super Admin uniquement). Annule les stocks et supprime les écritures comptables. */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (session.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Seul le Super Administrateur peut supprimer définitivement un achat.' }, { status: 403 })
+  }
+
+  const id = Number((await params).id)
+  if (!Number.isInteger(id) || id < 1) {
+    return NextResponse.json({ error: 'Id invalide.' }, { status: 400 })
+  }
+
+  try {
+    const a = await prisma.achat.findUnique({
+      where: { id },
+      include: { lignes: true },
+    })
+    if (!a) return NextResponse.json({ error: 'Achat introuvable.' }, { status: 404 })
+
+    await deleteEcrituresByReference('ACHAT', id)
+
+    for (const l of a.lignes) {
+      const st = await prisma.stock.findUnique({
+        where: { produitId_magasinId: { produitId: l.produitId, magasinId: a.magasinId } },
+      })
+      if (st) {
+        const newQty = Math.max(0, st.quantite - l.quantite)
+        await prisma.stock.update({
+          where: { id: st.id },
+          data: { quantite: newQty },
+        })
+        await prisma.mouvement.create({
+          data: {
+            type: 'SORTIE',
+            produitId: l.produitId,
+            magasinId: a.magasinId,
+            entiteId: a.entiteId,
+            utilisateurId: session.userId,
+            quantite: l.quantite,
+            observation: `Suppression achat ${a.numero}`,
+          },
+        })
+      }
+    }
+
+    await prisma.achat.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (e) {
+    console.error('DELETE /api/achats/[id]:', e)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
 }

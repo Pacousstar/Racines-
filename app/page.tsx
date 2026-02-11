@@ -69,7 +69,7 @@ export default function Home() {
           <p className="text-xl md:text-2xl font-semibold text-orange-700 mt-4">
             Gestion Professionnelle de Commerce
           </p>
-          <p className="text-orange-100 mt-2 text-sm md:text-base">
+          <p className="mt-2 text-sm md:text-base font-semibold text-[#0D6B0D]">
             Solution complète pour la gestion de vos magasins
           </p>
         </div>
@@ -97,21 +97,16 @@ export default function Home() {
           <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
         </Link>
 
-        <div className="mt-10 pt-6 border-t border-gray-200">
+        <div className="mt-10 pt-6 border-t border-gray-200 space-y-2">
           <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
             <Shield className="h-4 w-4 text-orange-500" />
             <span>Version 1.0.0 - Offline Ready - Sécurisé</span>
-            <div>
-            </div>
           </div>
-        </div>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-            
+          <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
             <span>Pacousstar - 05 44 81 49 24</span>
-            <div>
-            </div>
           </div>
         </div>
+      </div>
     </div>
   )
 }
