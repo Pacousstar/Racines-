@@ -671,6 +671,55 @@ export async function comptabiliserOperationBancaire(data: {
 }
 
 /**
+ * Comptabilise un transfert entre magasins (OD : Stock 31 Débit/Crédit)
+ */
+export async function comptabiliserTransfert(data: {
+  transfertId: number
+  numero: string
+  date: Date
+  magasinOrigineNom: string
+  magasinDestNom: string
+  montantTotal: number
+  utilisateurId: number
+}) {
+  if (data.montantTotal <= 0) return
+  const journal = await getOrCreateJournal('OD', 'Journal des Opérations Diverses', 'OD')
+  const compteStock = await getOrCreateCompte(
+    COMPTES_DEFAUT.STOCK_MARCHANDISES,
+    'Stock de marchandises',
+    '3',
+    'ACTIF'
+  )
+  const libelle = `Transfert ${data.numero} ${data.magasinOrigineNom} → ${data.magasinDestNom}`
+  await createEcriture({
+    date: data.date,
+    journalId: journal.id,
+    piece: data.numero,
+    libelle,
+    compteId: compteStock.id,
+    debit: data.montantTotal,
+    credit: 0,
+    reference: data.numero,
+    referenceType: 'TRANSFERT',
+    referenceId: data.transfertId,
+    utilisateurId: data.utilisateurId,
+  })
+  await createEcriture({
+    date: data.date,
+    journalId: journal.id,
+    piece: data.numero,
+    libelle,
+    compteId: compteStock.id,
+    debit: 0,
+    credit: data.montantTotal,
+    reference: data.numero,
+    referenceType: 'TRANSFERT',
+    referenceId: data.transfertId,
+    utilisateurId: data.utilisateurId,
+  })
+}
+
+/**
  * Initialise le plan de comptes et les journaux par défaut
  */
 export async function initialiserComptabilite() {

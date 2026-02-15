@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { comptabiliserAchat } from '@/lib/comptabilisation'
@@ -204,6 +205,11 @@ export async function POST(request: NextRequest) {
       console.error('Erreur comptabilisation achat:', comptaError)
       // On continue même si la comptabilisation échoue
     }
+
+    // Invalider le cache pour affichage immédiat
+    revalidatePath('/dashboard/achats')
+    revalidatePath('/dashboard/stock')
+    revalidatePath('/api/achats')
 
     return NextResponse.json(achat)
   } catch (e) {

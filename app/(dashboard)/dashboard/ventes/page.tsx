@@ -987,7 +987,9 @@ export default function VentesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {ventes.map((v) => (
+                {ventes.map((v) => {
+                  const resteAPayer = Math.max(0, Number(v.montantTotal) - (Number(v.montantPaye) || 0))
+                  return (
                   <tr key={v.id} className={v.statut === 'ANNULEE' ? 'bg-gray-100' : 'hover:bg-gray-50'}>
                     <td className="px-4 py-3 font-mono text-sm text-gray-900">{v.numero}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">
@@ -998,6 +1000,20 @@ export default function VentesPage() {
                       {Number(v.montantTotal).toLocaleString('fr-FR')} F
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{v.modePaiement}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${
+                        v.statutPaiement === 'PAYE' ? 'bg-green-100 text-green-800' : 
+                        v.statutPaiement === 'PARTIEL' ? 'bg-yellow-100 text-yellow-800' : 
+                        'bg-orange-100 text-orange-800'
+                      }`}>
+                        {v.statutPaiement === 'PAYE' ? 'Payé' : 
+                         v.statutPaiement === 'PARTIEL' ? 'Partiel' : 
+                         'Crédit'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-900">
+                      {resteAPayer > 0 ? `${resteAPayer.toLocaleString('fr-FR')} F` : '-'}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`rounded px-2 py-0.5 text-xs font-medium ${v.statut === 'ANNULEE' ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-800'}`}>
                         {v.statut === 'ANNULEE' ? 'Annulée' : 'Validée'}
@@ -1027,16 +1043,17 @@ export default function VentesPage() {
                           <button
                             onClick={() => handleSupprimer(v)}
                             disabled={supprimant === v.id}
-                            className="rounded p-1.5 text-red-700 hover:bg-red-100 disabled:opacity-50"
-                            title="Supprimer définitivement (stock et comptabilité mis à jour)"
+                            className="rounded p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            title="Supprimer définitivement"
                           >
-                            {supprimant === v.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         )}
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

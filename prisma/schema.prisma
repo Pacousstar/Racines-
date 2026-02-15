@@ -27,6 +27,7 @@ model Entite {
   charges      Charge[]
   depenses     Depense[]
   banques      Banque[]
+  transferts   Transfert[]
 }
 
 // UTILISATEURS & RÔLES
@@ -54,6 +55,7 @@ model Utilisateur {
   ecrituresComptables EcritureComptable[]
   operationsBancaires OperationBancaire[]
   DashboardPreference DashboardPreference?
+  transferts          Transfert[]
 }
 
 // MAGASINS
@@ -68,13 +70,15 @@ model Magasin {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  stocks           Stock[]
-  mouvements       Mouvement[]
-  ventes           Vente[]
-  achats           Achat[]
-  operationsCaisse Caisse[]
-  depenses         Depense[]
-  charges          Charge[]
+  stocks            Stock[]
+  mouvements        Mouvement[]
+  ventes            Vente[]
+  achats            Achat[]
+  operationsCaisse  Caisse[]
+  depenses          Depense[]
+  charges           Charge[]
+  transfertsOrigine Transfert[] @relation("TransfertOrigine")
+  transfertsDest    Transfert[] @relation("TransfertDest")
 }
 
 // PRODUITS (CATALOGUE COMMUN)
@@ -90,10 +94,11 @@ model Produit {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  stocks       Stock[]
-  mouvements   Mouvement[]
-  ventesLignes VenteLigne[]
-  achatsLignes AchatLigne[]
+  stocks         Stock[]
+  mouvements     Mouvement[]
+  ventesLignes   VenteLigne[]
+  achatsLignes   AchatLigne[]
+  transfertLignes TransfertLigne[]
 
   @@index([designation])
   @@index([categorie])
@@ -120,23 +125,63 @@ model Stock {
 
 // MOUVEMENTS DE STOCK
 model Mouvement {
-  id            Int         @id @default(autoincrement())
-  date          DateTime    @default(now())
-  type          String // "ENTREE" | "SORTIE"
-  produitId     Int
-  produit       Produit     @relation(fields: [produitId], references: [id])
-  magasinId     Int
-  magasin       Magasin     @relation(fields: [magasinId], references: [id])
-  entiteId      Int
-  entite        Entite      @relation(fields: [entiteId], references: [id])
-  utilisateurId Int
-  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id])
-  quantite      Int
-  observation   String?
-  createdAt     DateTime    @default(now())
+  id                  Int         @id @default(autoincrement())
+  date                DateTime    @default(now())
+  type                String // "ENTREE" | "SORTIE"
+  produitId           Int
+  produit             Produit     @relation(fields: [produitId], references: [id])
+  magasinId           Int
+  magasin             Magasin     @relation(fields: [magasinId], references: [id])
+  entiteId            Int
+  entite              Entite      @relation(fields: [entiteId], references: [id])
+  utilisateurId       Int
+  utilisateur         Utilisateur @relation(fields: [utilisateurId], references: [id])
+  quantite            Int
+  observation         String?
+  referenceTransfertId Int?       // Lien vers un transfert entre magasins
+  transfert           Transfert?  @relation(fields: [referenceTransfertId], references: [id])
+  createdAt           DateTime    @default(now())
 
   @@index([date])
   @@index([type])
+  @@index([referenceTransfertId])
+}
+
+// TRANSFERT DE PRODUITS ENTRE POINTS DE VENTE (MAGASINS)
+model Transfert {
+  id              Int      @id @default(autoincrement())
+  numero          String   @unique
+  date            DateTime @default(now())
+  magasinOrigineId Int
+  magasinOrigine   Magasin  @relation("TransfertOrigine", fields: [magasinOrigineId], references: [id])
+  magasinDestId   Int
+  magasinDest     Magasin  @relation("TransfertDest", fields: [magasinDestId], references: [id])
+  entiteId        Int
+  entite          Entite   @relation(fields: [entiteId], references: [id])
+  utilisateurId   Int
+  utilisateur     Utilisateur @relation(fields: [utilisateurId], references: [id])
+  observation     String?
+  createdAt       DateTime @default(now())
+
+  lignes    TransfertLigne[]
+  mouvements Mouvement[]
+
+  @@index([date])
+  @@index([magasinOrigineId])
+  @@index([magasinDestId])
+}
+
+model TransfertLigne {
+  id          Int       @id @default(autoincrement())
+  transfertId Int
+  transfert   Transfert @relation(fields: [transfertId], references: [id], onDelete: Cascade)
+  produitId   Int
+  produit     Produit   @relation(fields: [produitId], references: [id])
+  designation String
+  quantite    Int
+  createdAt   DateTime  @default(now())
+
+  @@index([transfertId])
 }
 
 // CLIENTS

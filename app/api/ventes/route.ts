@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logAction } from '@/lib/audit'
@@ -244,6 +245,10 @@ export async function POST(request: NextRequest) {
       console.error('Erreur comptabilisation vente:', comptaError)
       // On continue même si la comptabilisation échoue pour ne pas bloquer la vente
     }
+
+    // Invalider le cache pour affichage immédiat sur tous les postes
+    revalidatePath('/dashboard/ventes')
+    revalidatePath('/api/ventes')
 
     return NextResponse.json(vente)
   } catch (e) {

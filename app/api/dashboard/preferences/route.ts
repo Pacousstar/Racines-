@@ -15,8 +15,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ widgets: null, periode: '30' })
     }
 
+    let widgets = null
+    if (preference.widgets) {
+      try {
+        widgets = JSON.parse(preference.widgets)
+      } catch (e) {
+        console.error('Erreur parse widgets:', e)
+        widgets = null
+      }
+    }
+
     return NextResponse.json({
-      widgets: preference.widgets ? JSON.parse(preference.widgets) : null,
+      widgets,
       periode: preference.periode || '30',
     })
   } catch (e) {
@@ -31,23 +41,33 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { widgets, periode } = body
+    const { widgets: widgetsInput, periode } = body
 
     const preference = await prisma.dashboardPreference.upsert({
       where: { utilisateurId: session.userId },
       update: {
-        widgets: widgets ? JSON.stringify(widgets) : null,
+        widgets: widgetsInput ? JSON.stringify(widgetsInput) : null,
         periode: periode || '30',
       },
       create: {
         utilisateurId: session.userId,
-        widgets: widgets ? JSON.stringify(widgets) : null,
+        widgets: widgetsInput ? JSON.stringify(widgetsInput) : null,
         periode: periode || '30',
       },
     })
 
+    let widgets = null
+    if (preference.widgets) {
+      try {
+        widgets = JSON.parse(preference.widgets)
+      } catch (e) {
+        console.error('Erreur parse widgets:', e)
+        widgets = null
+      }
+    }
+    
     return NextResponse.json({
-      widgets: preference.widgets ? JSON.parse(preference.widgets) : null,
+      widgets,
       periode: preference.periode || '30',
     })
   } catch (e) {

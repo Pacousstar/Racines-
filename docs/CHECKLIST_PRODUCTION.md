@@ -10,41 +10,46 @@
 
 ## 2. Connexion et sécurité
 
-- [ ] Connexion possible avec un utilisateur existant (login / mot de passe).
-- [ ] Déconnexion fonctionne.
-- [ ] Les utilisateurs non SUPER_ADMIN ne voient que les données de leur entité (ventes, achats, exports, détail, annulation).
+- [ok] Connexion possible avec un utilisateur existant (login / mot de passe).
+- [ok] Déconnexion fonctionne.
+- [ok] Les utilisateurs non SUPER_ADMIN ne voient que les données de leur entité (ventes, achats, exports, détail, annulation).
 
 ## 3. Achats
 
-- [ ] **Liste** : pagination, filtres dates, affichage des lignes.
-- [ ] **Création** : choix magasin, fournisseur (ou libre), lignes produits (quantité, prix), mode de paiement, montant payé → enregistrement OK, stock mis à jour, écriture compta si activée.
-- [ ] **Détail** : ouverture d’un achat par id, infos complètes.
-- [ ] **Export** : Excel et PDF limités aux données de l’entité (hors SUPER_ADMIN).
+- [ok] **Liste** : pagination, filtres dates, affichage des lignes.
+- [ok] **Création** : choix magasin, fournisseur (ou libre), lignes produits (quantité, prix), mode de paiement, montant payé → enregistrement OK, stock mis à jour, écriture compta si activée.
+- [ok] **Détail** : ouverture d’un achat par id, infos complètes.
+- [ok] **Export** : Excel et PDF limités aux données de l’entité (hors SUPER_ADMIN).
 
 ## 4. Ventes
 
-- [ ] **Liste** : pagination, filtres dates, affichage des lignes.
-- [ ] **Création** : magasin, client (ou libre), lignes, mode de paiement, crédit si besoin (client type CREDIT, plafond) → enregistrement OK, stock décrémenté, écriture compta si activée.
-- [ ] **Détail** : ouverture d’une vente par id, infos complètes.
-- [ ] **Impression facture** : toutes les lignes sur une même facture.
-- [ ] **Annulation** : annulation d’une vente → stock recrémenté, statut ANNULEE.
-- [ ] **Export** : Excel et PDF limités aux données de l’entité (hors SUPER_ADMIN).
+- [ok] **Liste** : pagination, filtres dates, affichage des lignes.
+- [ok] **Création** : magasin, client (ou libre), lignes, mode de paiement, crédit si besoin (client type CREDIT, plafond) → enregistrement OK, stock décrémenté, écriture compta si activée.
+- [ok] **Détail** : ouverture d’une vente par id, infos complètes.
+- [ok] **Impression facture** : toutes les lignes sur une même facture.
+- [ok] **Annulation** : annulation d’une vente → stock recrémenté, statut ANNULEE.
+- [ok] **Export** : Excel et PDF limités aux données de l’entité (hors SUPER_ADMIN).
 
 ## 5. Comptabilité
 
-- [ ] Écritures visibles (page Écritures, option « Toutes les dates » si besoin).
-- [ ] Backfill ventes/achats/dépenses/charges OK si utilisé.
-- [ ] Aucune erreur bloquante au chargement des écritures.
+- [ok] Écritures visibles (page Écritures, option « Toutes les dates » si besoin).
+- [ok] Backfill ventes/achats/dépenses/charges OK si utilisé.
+- [ok] Aucune erreur bloquante au chargement des écritures.
 
 ## 6. Build portable
 
-- [ ] **Préparation** : fermer toute instance qui utilise la base (Lancer.bat du portable, `npm run dev` / `npm run start`).
-- [ ] **Commande** : `npm run build:portable` à la racine du projet.
-- [ ] **Résultat** : dossier **GestiCom-Portable** créé avec `data/gesticom.db` (copie de `C:\gesticom\gesticom.db` si elle existe, sinon `prisma/gesticom.db`).
-- [ ] **Utilisation** : copier le dossier sur clé/autre PC, ajouter `node.exe`, lancer **Lancer.bat** (ou Lancer.vbs).
+- [ok] **Préparation** : fermer toute instance qui utilise la base (Lancer.bat du portable, `npm run dev` / `npm run start`).
+- [ok] **Commande** : `npm run build:portable` à la racine du projet.
+- [ok] **Résultat** : dossier **GestiCom-Portable** créé avec `data/gesticom.db` (copie de `C:\gesticom\gesticom.db` si elle existe, sinon `prisma/gesticom.db`).
+- [ok] **Utilisation** : copier le dossier sur clé/autre PC, ajouter `node.exe`, lancer **Lancer.bat** (ou Lancer.vbs).
 - [ ] **Portable** : connexion OK, Achats et Ventes opérationnels (création, liste, détail, export), pas d’erreur SESSION_SECRET en console.
+- [ ] **Portable** : donnees dans C:\GestiCom-Portable\gesticom.db ; a l'arret recopie vers data/gesticom.db.
 
-## 7. Après validation
+## 7. Transferts entre points de vente
+
+- [ok] Menu Transferts (entre Stock et Ventes), liste avec filtre date/magasin, création avec stock et compta (compte 31).
+
+## 8. Après validation
 
 Une fois tous les points ci‑dessus validés :
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logCreation, getIpAddress, getUserAgent } from '@/lib/audit'
@@ -168,6 +169,11 @@ export async function POST(request: NextRequest) {
       },
       ipAddress
     )
+
+    // Invalider le cache pour affichage immédiat
+    revalidatePath('/dashboard/produits')
+    revalidatePath('/dashboard/stock')
+    revalidatePath('/api/produits')
 
     return NextResponse.json(p)
   } catch (e) {

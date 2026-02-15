@@ -13,11 +13,15 @@ const { execSync } = require('child_process')
 const base = path.basename(__dirname) === 'scripts' ? path.join(__dirname, '..') : __dirname
 const envPath = path.join(base, '.env')
 const urlPath = path.join(base, '.database_url')
-// Même source d'URL que le launcher / run-standalone : env (launcher) > LOCALAPPDATA > .database_url > .env
-if (!process.env.DATABASE_URL && process.platform === 'win32' && process.env.LOCALAPPDATA) {
+// Même source d'URL que le launcher : C:\GestiCom-Portable (priorité) > env > LOCALAPPDATA > .database_url > .env
+if (!process.env.DATABASE_URL && process.platform === 'win32') {
   try {
-    const fixed = path.join(process.env.LOCALAPPDATA, 'GestiComPortable', 'database_url.txt')
-    if (fs.existsSync(fixed)) process.env.DATABASE_URL = fs.readFileSync(fixed, 'utf8').trim()
+    const prodFile = path.join('C:', 'GestiCom-Portable', 'database_url.txt')
+    if (fs.existsSync(prodFile)) process.env.DATABASE_URL = fs.readFileSync(prodFile, 'utf8').trim()
+    if (!process.env.DATABASE_URL && process.env.LOCALAPPDATA) {
+      const fixed = path.join(process.env.LOCALAPPDATA, 'GestiComPortable', 'database_url.txt')
+      if (fs.existsSync(fixed)) process.env.DATABASE_URL = fs.readFileSync(fixed, 'utf8').trim()
+    }
   } catch (_) {}
 }
 if (!process.env.DATABASE_URL && fs.existsSync(urlPath)) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getEntiteId } from '@/lib/get-entite-id'
@@ -50,6 +51,11 @@ export async function POST(
     }
 
     await prisma.vente.update({ where: { id }, data: { statut: 'ANNULEE' } })
+    
+    // Invalider le cache pour affichage immédiat
+    revalidatePath('/dashboard/ventes')
+    revalidatePath('/api/ventes')
+    
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('POST /api/ventes/[id]/annuler:', e)

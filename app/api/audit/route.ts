@@ -65,19 +65,31 @@ export async function GET(request: NextRequest) {
       prisma.auditLog.count({ where }),
     ])
 
-    const logsWithDetails = logs.map(log => ({
-      id: log.id,
-      date: log.date.toISOString(),
-      utilisateur: log.utilisateur,
-      action: log.action,
-      type: log.type,
-      entiteId: log.entiteId,
-      description: log.description,
-      details: log.details ? JSON.parse(log.details) : null,
-      ipAddress: log.ipAddress,
-      userAgent: log.userAgent,
-      createdAt: log.createdAt.toISOString(),
-    }))
+    const logsWithDetails = logs.map(log => {
+      let details = null
+      if (log.details) {
+        try {
+          details = JSON.parse(log.details)
+        } catch (e) {
+          console.error('Erreur parse details audit log:', e)
+          details = null
+        }
+      }
+      
+      return {
+        id: log.id,
+        date: log.date.toISOString(),
+        utilisateur: log.utilisateur,
+        action: log.action,
+        type: log.type,
+        entiteId: log.entiteId,
+        description: log.description,
+        details,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+        createdAt: log.createdAt.toISOString(),
+      }
+    })
 
     return NextResponse.json({
       logs: logsWithDetails,

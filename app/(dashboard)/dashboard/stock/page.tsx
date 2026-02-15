@@ -515,9 +515,47 @@ export default function StockPage() {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editRow || editRow.id == null) return
+    if (!editRow) return
     setErr('')
     setSaving(true)
+    
+    // Si le stock n'existe pas encore (id null), on doit le créer via une entrée de stock
+    if (editRow.id == null) {
+      const quantite = Math.max(0, Math.floor(Number(editForm.quantite) || 0))
+      try {
+        const res = await fetch('/api/stock/entree', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: new Date().toISOString().split('T')[0],
+            magasinId: editRow.magasin.id,
+            produitId: editRow.produit.id,
+            quantite: quantite,
+            observation: 'Initialisation stock',
+          }),
+        })
+        if (res.ok) {
+          setShowEdit(false)
+          setEditRow(null)
+          refetch()
+          showSuccess('Stock initialisé avec succès.')
+        } else {
+          const d = await res.json()
+          const errorMsg = formatApiError(d.error || 'Erreur lors de l\'initialisation.')
+          setErr(errorMsg)
+          showError(errorMsg)
+        }
+      } catch (e) {
+        const errorMsg = formatApiError(e)
+        setErr(errorMsg)
+        showError(errorMsg)
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+    
+    // Stock existant, on peut le modifier
     try {
       const res = await fetch(`/api/stock/${editRow.id}`, {
         method: 'PATCH',
@@ -1004,15 +1042,13 @@ export default function StockPage() {
                         }) : '-'}
                       </td>
                       <td className="px-4 py-3">
-                        {s.id != null && (
-                          <button
-                            onClick={() => openEdit(s as StockRow & { id: number })}
-                            className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-orange-600"
-                            title="Modifier"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => openEdit(s)}
+                          className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-orange-600"
+                          title="Modifier"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   )

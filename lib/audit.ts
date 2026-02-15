@@ -40,6 +40,7 @@ export type EntityType =
   | 'ECRITURE_COMPTABLE'
   | 'PLAN_COMPTE'
   | 'JOURNAL'
+  | 'TRANSFERT'
 
 export interface AuditLogData {
   utilisateurId: number

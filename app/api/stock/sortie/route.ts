@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getEntiteId } from '@/lib/get-entite-id'
@@ -83,6 +84,11 @@ export async function POST(request: NextRequest) {
       where: { id: st.id },
       include: { produit: { select: { code: true, designation: true } }, magasin: { select: { code: true } } },
     })
+    
+    // Invalider le cache pour affichage immédiat
+    revalidatePath('/dashboard/stock')
+    revalidatePath('/api/stock')
+    
     return NextResponse.json(updated)
   } catch (e) {
     console.error('POST /api/stock/sortie:', e)

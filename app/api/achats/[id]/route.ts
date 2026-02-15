@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getEntiteId } from '@/lib/get-entite-id'
@@ -89,6 +90,12 @@ export async function DELETE(
     }
 
     await prisma.achat.delete({ where: { id } })
+    
+    // Invalider le cache pour affichage immédiat
+    revalidatePath('/dashboard/achats')
+    revalidatePath('/dashboard/stock')
+    revalidatePath('/api/achats')
+    
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('DELETE /api/achats/[id]:', e)

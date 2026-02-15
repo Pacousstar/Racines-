@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
@@ -89,6 +90,11 @@ export async function POST(request: NextRequest) {
     const c = await clientRepo.create({
       data: { nom, telephone, type, plafondCredit, ncc, actif: true },
     })
+    
+    // Invalider le cache pour affichage immédiat
+    revalidatePath('/dashboard/clients')
+    revalidatePath('/api/clients')
+    
     return NextResponse.json(c)
   } catch (e) {
     console.error('POST /api/clients:', e)

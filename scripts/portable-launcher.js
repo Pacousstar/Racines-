@@ -1,8 +1,7 @@
 /**
  * Lanceur GestiCom portable — UNE SEULE LOGIQUE pour tous les PC.
- * Sous Windows : TOUJOURS utiliser %LOCALAPPDATA%\GestiComPortable\gesticom.db.
- * Ainsi le même dossier portable fonctionne partout (dev, prod, Bureau, C:\, clé USB) et
- * tous les enregistrements (ventes, achats, clients, etc.) sont bien sauvegardés.
+ * Production Windows : chemin SANS ESPACES = C:\GestiCom-Portable (base unique, enregistrements toujours pris en compte).
+ * Fallback si C:\ non accessible : %LOCALAPPDATA%\GestiComPortable.
  */
 
 const path = require('path')
@@ -14,27 +13,45 @@ const base = __dirname
 const dataDir = path.join(base, 'data')
 const dbPath = path.join(dataDir, 'gesticom.db')
 
+// Chemin de production unique (sans espaces) pour que la base soit toujours lue/écrite au même endroit
+const PRODUCTION_DATA_DIR_WIN = path.join('C:', 'GestiCom-Portable')
+
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
 if (!fs.existsSync(dbPath)) {
   console.error('Erreur: data/gesticom.db manquant. Lancez npm run build:portable depuis le projet.')
   process.exit(1)
 }
 
-/** URL file: pour SQLite. Encode les espaces en %20. */
+/** URL file: pour SQLite. Pour C:\GestiCom-Portable pas d'encodage (pas d'espaces). */
 function toFileUrl(p) {
   const s = path.resolve(p).replace(/\\/g, '/').replace(/^([a-zA-Z]):/, '$1:')
   return 'file:' + encodeURI(s).replace(/^file%3A/, 'file:')
 }
 
+/** URL file: sans encodage (pour chemin sans espaces comme C:\GestiCom-Portable). */
+function toFileUrlRaw(p) {
+  const s = path.resolve(p).replace(/\\/g, '/').replace(/^([a-zA-Z]):/, '$1:')
+  return 'file:' + s
+}
+
 function getPortableDataDir() {
   if (process.platform === 'win32') {
-    const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || os.homedir(), 'AppData', 'Local')
-    return path.join(localAppData, 'GestiComPortable')
+    try {
+      const prodDir = PRODUCTION_DATA_DIR_WIN
+      if (!fs.existsSync(prodDir)) fs.mkdirSync(prodDir, { recursive: true })
+      // Vérifier qu'on peut écrire (accès C:\ possible)
+      const testFile = path.join(prodDir, '.write_test')
+      fs.writeFileSync(testFile, 'ok', 'utf8')
+      fs.unlinkSync(testFile)
+      return prodDir
+    } catch (e) {
+      const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || os.homedir(), 'AppData', 'Local')
+      return path.join(localAppData, 'GestiComPortable')
+    }
   }
   return path.join(os.homedir(), '.gesticom_portable')
 }
 
-// Windows : TOUJOURS utiliser LOCALAPPDATA (un seul chemin, aucun souci d'espaces ni de droits).
 let dbUrl = toFileUrl(dbPath)
 let dbToUse = dbPath
 let useFallback = false
@@ -51,18 +68,18 @@ if (process.platform === 'win32') {
     const dataLarger = fallbackExists ? (dataStat.size > fs.statSync(fallback).size) : true
     if (!fallbackExists || dataNewer || dataLarger) {
       fs.copyFileSync(dbPath, fallback)
-      dbUrl = toFileUrl(fallback)
       dbToUse = fallback
       useFallback = true
       const sizeKo = Math.round(fs.statSync(fallback).size / 1024)
       console.log('Base data/gesticom.db (' + sizeKo + ' Ko) copiee vers ' + portableDataDir + '.')
     } else {
-      dbUrl = toFileUrl(fallback)
       dbToUse = fallback
       useFallback = true
       const sizeKo = Math.round(fs.statSync(fallback).size / 1024)
       console.log('Base ' + fallback + ' (' + sizeKo + ' Ko) utilisee.')
     }
+    // URL sans %20 pour C:\GestiCom-Portable (évite erreur 14 SQLite)
+    dbUrl = portableDataDir === PRODUCTION_DATA_DIR_WIN ? toFileUrlRaw(fallback) : toFileUrl(fallback)
   } catch (e) {
     console.warn('Impossible d\'utiliser ' + portableDataDir + ':', e.message)
   }
@@ -81,7 +98,7 @@ process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0'
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'GestiCom-Portable-ChangeMe-InProduction-32c'
 process.env.DATABASE_URL = dbUrl
 
-// Source unique d'URL : LOCALAPPDATA (le serveur lira ce fichier, pas le .env du portable).
+// Source unique d'URL : C:\GestiCom-Portable (ou LOCALAPPDATA en fallback). Le serveur lit database_url.txt.
 const portableDataDir = getPortableDataDir()
 if (process.platform === 'win32') {
   try {
@@ -116,9 +133,13 @@ const runStandalone = `'use strict';
 var path = require('path');
 var fs = require('fs');
 var url = null;
-if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
-  var fixed = path.join(process.env.LOCALAPPDATA, 'GestiComPortable', 'database_url.txt');
-  if (fs.existsSync(fixed)) url = fs.readFileSync(fixed, 'utf8').trim();
+if (process.platform === 'win32') {
+  var prodFile = path.join('C:', 'GestiCom-Portable', 'database_url.txt');
+  if (fs.existsSync(prodFile)) url = fs.readFileSync(prodFile, 'utf8').trim();
+  if (!url && process.env.LOCALAPPDATA) {
+    var appDataFile = path.join(process.env.LOCALAPPDATA, 'GestiComPortable', 'database_url.txt');
+    if (fs.existsSync(appDataFile)) url = fs.readFileSync(appDataFile, 'utf8').trim();
+  }
 }
 if (!url) {
   var f = path.join(__dirname, '.database_url');

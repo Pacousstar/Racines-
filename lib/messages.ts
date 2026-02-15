@@ -15,6 +15,7 @@ export const MESSAGES = {
   BANQUE_ENREGISTREE: 'Compte bancaire créé avec succès.',
   OPERATION_BANQUE_ENREGISTREE: 'Opération bancaire enregistrée avec succès.',
   CAISSE_ENREGISTREE: 'Opération caisse enregistrée avec succès.',
+  TRANSFERT_ENREGISTRE: 'Transfert enregistré avec succès.',
   ECRITURE_ENREGISTREE: 'Écriture enregistrée avec succès.',
   TEMPLATE_ENREGISTRE: 'Template enregistré avec succès.',
   UTILISATEUR_ENREGISTRE: 'Utilisateur créé avec succès.',

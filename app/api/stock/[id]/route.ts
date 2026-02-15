@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
@@ -28,6 +29,11 @@ export async function PATCH(
     }
 
     const s = await prisma.stock.update({ where: { id }, data })
+    
+    // Invalider le cache pour affichage immédiat
+    revalidatePath('/dashboard/stock')
+    revalidatePath('/api/stock')
+    
     return NextResponse.json(s)
   } catch (e) {
     console.error('PATCH /api/stock/[id]:', e)
