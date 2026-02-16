@@ -52,38 +52,14 @@ function getPortableDataDir() {
   return path.join(os.homedir(), '.gesticom_portable')
 }
 
+// TOUJOURS utiliser data/gesticom.db dans le dossier portable (pas de copie vers LOCALAPPDATA)
+// Cela garantit que les enregistrements sont persistés au même endroit sur TOUS les PC
 let dbUrl = toFileUrl(dbPath)
 let dbToUse = dbPath
-let useFallback = false
 
-if (process.platform === 'win32') {
-  const portableDataDir = getPortableDataDir()
-  const fallback = path.join(portableDataDir, 'gesticom.db')
-  const fallbackDir = path.dirname(fallback)
-  try {
-    if (!fs.existsSync(fallbackDir)) fs.mkdirSync(fallbackDir, { recursive: true })
-    const fallbackExists = fs.existsSync(fallback)
-    const dataStat = fs.statSync(dbPath)
-    const dataNewer = fallbackExists ? (dataStat.mtime.getTime() > fs.statSync(fallback).mtime.getTime()) : true
-    const dataLarger = fallbackExists ? (dataStat.size > fs.statSync(fallback).size) : true
-    if (!fallbackExists || dataNewer || dataLarger) {
-      fs.copyFileSync(dbPath, fallback)
-      dbToUse = fallback
-      useFallback = true
-      const sizeKo = Math.round(fs.statSync(fallback).size / 1024)
-      console.log('Base data/gesticom.db (' + sizeKo + ' Ko) copiee vers ' + portableDataDir + '.')
-    } else {
-      dbToUse = fallback
-      useFallback = true
-      const sizeKo = Math.round(fs.statSync(fallback).size / 1024)
-      console.log('Base ' + fallback + ' (' + sizeKo + ' Ko) utilisee.')
-    }
-    // URL sans %20 pour C:\GestiCom-Portable (évite erreur 14 SQLite)
-    dbUrl = portableDataDir === PRODUCTION_DATA_DIR_WIN ? toFileUrlRaw(fallback) : toFileUrl(fallback)
-  } catch (e) {
-    console.warn('Impossible d\'utiliser ' + portableDataDir + ':', e.message)
-  }
-}
+console.log('✅ NOUVELLE LOGIQUE: Base TOUJOURS dans data/gesticom.db (pas de copie)')
+console.log('   Chemin portable: ' + base)
+console.log('   Base de données: ' + dbPath)
 
 console.log('')
 console.log('=== GestiCom Portable ===')

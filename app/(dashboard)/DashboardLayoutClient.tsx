@@ -31,7 +31,6 @@ import {
   ChevronDown,
   Loader2,
   CreditCard,
-  ArrowLeftRight,
 } from 'lucide-react'
 import type { Session } from '@/lib/auth'
 import { ToastContainer } from '@/components/ui/Toast'
@@ -47,7 +46,6 @@ const navigation: Array<{
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Produits', href: '/dashboard/produits', icon: Package },
   { name: 'Stock', href: '/dashboard/stock', icon: Warehouse },
-  { name: 'Transferts', href: '/dashboard/transferts', icon: ArrowLeftRight },
   { name: 'Ventes', href: '/dashboard/ventes', icon: ShoppingCart },
   { name: 'Clients', href: '/dashboard/clients', icon: Users },
   { name: 'Fournisseurs', href: '/dashboard/fournisseurs', icon: Truck },
