@@ -36,6 +36,9 @@ import type { Session } from '@/lib/auth'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
 
+// Diagnostic DB banner
+type DbInfo = { nodeEnv?: string; databaseUrl?: string }
+
 const navigation: Array<{
   name: string
   href: string

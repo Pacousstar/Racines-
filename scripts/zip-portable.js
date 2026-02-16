@@ -25,12 +25,14 @@ function ts() {
 
   try {
     if (process.platform === 'win32') {
-      // PowerShell Compress-Archive
-      const cmd = `powershell -NoProfile -Command "Compress-Archive -Path \"${portableDir}/*\" -DestinationPath \"${outPath}\" -Force"`
+      // PowerShell Compress-Archive avec échappement correct pour les espaces
+      const sourcePath = `${portableDir}/*`.replace(/\\/g, '\\\\')
+      const destPath = outPath.replace(/\\/g, '\\\\')
+      const cmd = `powershell -NoProfile -Command "& {Compress-Archive -Path '${portableDir}/*' -DestinationPath '${outPath}' -Force}"`
       execSync(cmd, { stdio: 'inherit' })
     } else if (process.platform === 'darwin' || process.platform === 'linux') {
       // zip -r
-      const cmd = `zip -r -q \"${outPath}\" \"GestiCom-Portable\"`
+      const cmd = `zip -r -q \\"${outPath}\\" \\"GestiCom-Portable\\"`
       execSync(cmd, { stdio: 'inherit', cwd: projectRoot })
     } else {
       throw new Error('Plateforme non supportée automatiquement, créez le zip manuellement.')
