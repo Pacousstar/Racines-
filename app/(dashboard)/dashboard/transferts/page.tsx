@@ -494,7 +494,7 @@ export default function TransfertsPage() {
       )}
 
       {stockInsuffisantModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="p-4 border-b">
               <h3 className="text-lg font-semibold text-gray-900">⚠️ Stock insuffisant</h3>
