@@ -94,8 +94,9 @@ export async function POST(request: NextRequest) {
       })
       const qte = st?.quantite ?? 0
       if (qte < l.quantite) {
+        console.log(`⚠️ Stock insuffisant : ${l.designation} - dispo: ${qte}, demandé: ${l.quantite}`)
         return NextResponse.json(
-          { error: `Stock insuffisant pour ${l.designation} (dispo: ${qte}).` },
+          { error: `Stock insuffisant pour ${l.designation} (dispo: ${qte})` },
           { status: 400 }
         )
       }

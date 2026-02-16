@@ -492,6 +492,57 @@ export default function TransfertsPage() {
           </div>
         </div>
       )}
+
+      {stockInsuffisantModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">⚠️ Stock insuffisant</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-gray-700">
+                Le produit <strong className="text-gray-900">{stockInsuffisantModal.designation}</strong> n&apos;a que{' '}
+                <strong className="text-orange-600">{stockInsuffisantModal.quantiteDispo} unité(s)</strong> disponible(s) dans le magasin d&apos;origine,
+                mais vous souhaitez en transférer <strong className="text-red-600">{stockInsuffisantModal.quantiteDemandee}</strong>.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantité à ajouter au stock d&apos;origine
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={stockAjoutQuantite}
+                  onChange={(e) => setStockAjoutQuantite(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="Ex: 10"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Suggestion : au moins {Math.max(1, stockInsuffisantModal.quantiteDemandee - stockInsuffisantModal.quantiteDispo)} unité(s)
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStockInsuffisantModal(null)}
+                  className="rounded-lg border-2 border-gray-400 bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStockAjoutEtReessayer}
+                  disabled={stockAjoutSaving}
+                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {stockAjoutSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {stockAjoutSaving ? 'Ajout en cours...' : 'Ajouter et réessayer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

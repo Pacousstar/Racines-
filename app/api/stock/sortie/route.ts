@@ -52,8 +52,16 @@ export async function POST(request: NextRequest) {
     let st = await prisma.stock.findUnique({
       where: { produitId_magasinId: { produitId, magasinId } },
     })
+    // Si le produit n'existe pas dans ce magasin, créer la ligne de stock
     if (!st) {
-      return NextResponse.json({ error: 'Aucun stock pour ce produit dans ce magasin.' }, { status: 400 })
+      st = await prisma.stock.create({
+        data: {
+          produitId,
+          magasinId,
+          quantite: 0,
+          quantiteInitiale: 0,
+        },
+      })
     }
     if (st.quantite < quantite) {
       return NextResponse.json(
