@@ -88,11 +88,15 @@ export async function POST(request: NextRequest) {
     }
     if (!lignesValides.length) return NextResponse.json({ error: 'Lignes invalides.' }, { status: 400 })
 
+    console.log('🔍 Lignes valides:', lignesValides.length)
+
     for (const l of lignesValides) {
+      console.log(`🔍 Vérification stock pour ${l.designation} (ID: ${l.produitId})`)
       const st = await prisma.stock.findUnique({
         where: { produitId_magasinId: { produitId: l.produitId, magasinId: magasinOrigineId } },
       })
       const qte = st?.quantite ?? 0
+      console.log(`📦 Stock disponible: ${qte}, demandé: ${l.quantite}`)
       if (qte < l.quantite) {
         console.log(`⚠️ Stock insuffisant : ${l.designation} - dispo: ${qte}, demandé: ${l.quantite}`)
         return NextResponse.json(
@@ -102,8 +106,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log('✅ Toutes les vérifications passées, création du transfert...')
     const num = `TRF-${Date.now()}`
+    console.log(`🔍 Numéro de transfert: ${num}`)
+    console.log('🔍 Début de la transaction...')
     const transfert = await prisma.$transaction(async (tx) => {
+      console.log('🔍 Création du transfert dans la BD...')
       const t = await tx.transfert.create({
         data: {
           numero: num,
@@ -123,7 +131,10 @@ export async function POST(request: NextRequest) {
           magasinDest: { select: { code: true, nom: true } },
         },
       })
+      console.log(`✅ Transfert créé: ID ${t.id}`)
+      console.log('🔍 Création des mouvements et mise à jour des stocks...')
       for (const l of lignesValides) {
+        console.log(`  - Traitement produit ${l.designation}...`)
         await tx.mouvement.create({
           data: {
             date: dateTransfert,
@@ -163,9 +174,12 @@ export async function POST(request: NextRequest) {
           })
         }
         await tx.stock.update({ where: { id: stDest.id }, data: { quantite: { increment: l.quantite } } })
+        console.log(`  ✅ ${l.designation} traité`)
       }
+      console.log('✅ Transaction terminée avec succès')
       return t
     })
+    console.log('🔍 Sortie de la transaction')
 
     const montantTotal = lignesValides.reduce((s, l) => s + l.quantite * (l.prixAchat ?? 0), 0)
     try {
