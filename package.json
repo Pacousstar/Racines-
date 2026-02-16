@@ -37,7 +37,8 @@
     "fusion-bases": "node scripts/fusion-bases.js",
     "fusion:production": "node scripts/fusion-bases-production.js",
     "import:ca-plus": "node scripts/import-ca-plus.js",
-    "pwa:generate-icons": "node scripts/generate-pwa-icons.js"
+    "pwa:generate-icons": "node scripts/generate-pwa-icons.js",
+    "package:portable": "node scripts/zip-portable.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
